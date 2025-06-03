@@ -125,9 +125,6 @@ async function getHistoricalData(req, res, next) {
     const dominantPollutantMode = findDominantPollutantMode(data);
     const averageAQI = calculateAverageAQI(data);
     
-    // Get forecast data for comparison
-    const forecastData = await getFirebaseForecastData(sensorId, timeRange === '30d' ? '3d' : '1d');
-    
     // Prepare response
     const response = {
       location,
@@ -142,8 +139,7 @@ async function getHistoricalData(req, res, next) {
           info: dominantPollutantMode.pollutant ? pollutantInfo[dominantPollutantMode.pollutant] : null,
           frequency: dominantPollutantMode.frequency
         }
-      },
-      forecast: forecastData
+      }
     };
     
     return res.json(response);
