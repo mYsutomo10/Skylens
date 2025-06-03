@@ -59,7 +59,7 @@ To build and run with Docker:
 docker build -t skylens-backend .
 
 # Run the container
-docker run -p 3000:3000 --env-file .env skylens-backend
+docker run -d -p 80:3000 --env-file .env skylens-backend
 ```
 
 ## Environment Variables
