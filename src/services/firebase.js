@@ -79,9 +79,9 @@ async function getHistoricalData(sensorId, timeRange) {
     // Query historical data
     const readingsRef = db.collection(`current_data/${sensorId}/readings`);
     const snapshot = await readingsRef
+      .orderBy('timestamp', 'asc')
       .where('timestamp', '>=', startTime)
       .where('timestamp', '<=', endTime)
-      .orderBy('timestamp', 'asc')
       .get();
     
     if (snapshot.empty) {
