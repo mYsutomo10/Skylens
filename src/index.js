@@ -40,9 +40,7 @@ const PORT = config.port;
 app.listen(PORT, () => {
   console.log(`🚀 SkyLENS backend server running on port ${PORT}`);
   console.log(`Environment: ${config.environment}`);
-  /*local test
   console.log(`🔗 Access it at: http://localhost:${PORT}`);
-  */
 });
 
 module.exports = app;
