@@ -5,7 +5,7 @@ import boto3
 from datetime import datetime, timedelta
 
 # Variabel ENV
-S3_BUCKET = os.environ.get("CONFIG_BUCKET", "config")
+S3_BUCKET = os.environ.get("CONFIG_BUCKET", "configfs")
 S3_KEY = os.environ.get("FIREBASE_CRED_KEY", "firebase-service-account.json")
 LOCAL_CRED_PATH = "/tmp/firebase-service-account.json"
 
