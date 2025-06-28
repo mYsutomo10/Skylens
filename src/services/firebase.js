@@ -6,8 +6,9 @@ let firestore;
 /**
  * Initialize Firebase Admin SDK
  */
-function initializeFirebase() {
+async function initializeFirebase() {
   try {
+    const config = await loadConfig();
     if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert({
@@ -94,19 +95,16 @@ async function getHistoricalData(sensorId, timeRange) {
 /**
  * Get forecast air quality data
  */
-async function getForecastData(sensorId, timeRange) {
+async function getForecastData(sensorId) {
   try {
-    const config = await loadConfig();
     const db = getFirestore();
 
-    const hours = config.forecastRanges[timeRange];
     const currentTime = new Date();
 
     const readingsRef = db.collection(`forecast_data/${sensorId}/main`);
     const snapshot = await readingsRef
       .where('timestamp', '>=', currentTime)
       .orderBy('timestamp', 'asc')
-      .limit(hours)
       .get();
 
     return snapshot.empty ? [] : snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

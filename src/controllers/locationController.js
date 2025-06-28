@@ -22,11 +22,11 @@ const {
 async function getCurrentData(req, res, next) {
   try {
     const config = await loadConfig();
+    
     // Extract location from URL path
     const locationPath = req.path.split('/')[1];
     const location = decodeURIComponent(locationPath);
-    
-    // Get sensor ID for the location
+
     const sensorId = config.sensors.sensorIds[location];
     
     if (!sensorId) {
@@ -35,42 +35,44 @@ async function getCurrentData(req, res, next) {
         message: `Location not found: ${location}`
       });
     }
-    
-    // Get current data for the sensor
-    const data = await getFirebaseCurrentData(sensorId);
-    
-    if (!data) {
+
+    // Get both current and processed data
+    const { current, processed } = await getFirebaseCurrentData(sensorId);
+
+    if (!current && !processed) {
       return res.status(404).json({
         status: 'error',
         message: `No data available for location: ${location}`
       });
     }
+
+    // Pilih `data` sebagai fallback: gunakan `processed` jika `current` tidak tersedia
+    const data = processed || current;
+
+    // Health recommendations dan pollutant info berdasarkan `processed`
+    const healthRecommendations = data?.aqi ? getHealthRecommendations(data.aqi) : null;
     
-    // Get health recommendations based on AQI
-    const healthRecommendations = getHealthRecommendations(data.aqi);
-    
-    // Get pollutant info if dominant pollutant is available
     let dominantPollutantInfo = null;
-    if (data.dominant_pollutant) {
+    if (data?.dominant_pollutant) {
       dominantPollutantInfo = pollutantInfo[data.dominant_pollutant] || null;
     }
-    
-    // Prepare response
+
+    // Prepare final response
     const response = {
       location,
-      timestamp: data.timestamp,
-      aqi: data.aqi,
-      components: data.components,
-      dominant_pollutant: data.dominant_pollutant,
-      dominantPollutantInfo,
-      health: {
-        riskLevel: healthRecommendations.riskLevel,
-        generalMessage: healthRecommendations.generalMessage,
-        vulnerableMessage: healthRecommendations.vulnerableMessage,
-        recommendations: healthRecommendations.recommendations
-      }
+      current,
+      processed,
+      health: healthRecommendations
+        ? {
+            riskLevel: healthRecommendations.riskLevel,
+            generalMessage: healthRecommendations.generalMessage,
+            vulnerableMessage: healthRecommendations.vulnerableMessage,
+            recommendations: healthRecommendations.recommendations
+          }
+        : null,
+      dominantPollutantInfo
     };
-    
+
     return res.json(response);
   } catch (error) {
     next(error);
@@ -174,19 +176,9 @@ async function getForecastData(req, res, next) {
       });
     }
     
-    // Get time range from query parameter (default to 1 day)
-    const timeRange = req.query.range || '1d';
-    
-    if (!config.forecastRanges[timeRange]) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Invalid time range: ${timeRange}. Valid values are: 1d, 3d`
-      });
-    }
-    
     // Get forecast data for the sensor
-    const data = await getFirebaseForecastData(sensorId, timeRange);
-    
+    const data = await getFirebaseForecastData(sensorId);
+
     if (!data || data.length === 0) {
       return res.status(404).json({
         status: 'error',
@@ -201,7 +193,6 @@ async function getForecastData(req, res, next) {
     // Prepare response
     const response = {
       location,
-      timeRange,
       forecastReadings: data,
       averageForecastAQI: averageAQI,
       health: {
