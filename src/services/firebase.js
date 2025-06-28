@@ -45,7 +45,7 @@ async function getCurrentData(sensorId) {
     const db = getFirestore();
     
     // Get the most recent reading
-    const readingsRef = db.collection(`current_data/${sensorId}/readings`);
+    const readingsRef = db.collection(`current_data/${sensorId}/main`);
     const snapshot = await readingsRef
       .orderBy('timestamp', 'desc')
       .limit(1)
@@ -77,7 +77,7 @@ async function getHistoricalData(sensorId, timeRange) {
     const startTime = new Date(endTime.getTime() - config.timeRanges[timeRange]);
     
     // Query historical data
-    const readingsRef = db.collection(`current_data/${sensorId}/readings`);
+    const readingsRef = db.collection(`current_data/${sensorId}/main`);
     const snapshot = await readingsRef
       .orderBy('timestamp', 'asc')
       .where('timestamp', '>=', startTime)
@@ -111,7 +111,7 @@ async function getForecastData(sensorId, timeRange) {
     const currentTime = new Date();
     
     // Query forecast data
-    const readingsRef = db.collection(`forecast_data/${sensorId}/readings`);
+    const readingsRef = db.collection(`forecast_data/${sensorId}/main`);
     const snapshot = await readingsRef
       .where('timestamp', '>=', currentTime)
       .orderBy('timestamp', 'asc')
