@@ -3,7 +3,7 @@ const { getDailyTip } = require('../utils/dailyTips');
 const { pollutantInfo } = require('../utils/pollutantInfo');
 const { getPollutionImpactSimulations } = require('../utils/pollutionImpact');
 const { getCurrentData } = require('../services/firebase');
-const { config } = require('../config');
+const { loadConfig } = require('../config');
 
 /**
  * Get homepage data including news, daily tip, and pollution impacts
@@ -13,29 +13,22 @@ const { config } = require('../config');
  */
 async function getHomepage(req, res, next) {
   try {
-    // Get sample AQI data for pollution impact simulation
-    // Using Jalan Radio as a representative location
+    const config = await loadConfig();
+
     const sensorId = config.sensors.sensorIds['Jalan Radio'];
     const currentData = await getCurrentData(sensorId);
-    
-    // Fetch environmental news
+
     const news = await fetchEnvironmentalNews();
-    
-    // Get daily tip
     const dailyTip = getDailyTip();
-    
-    // Get pollution impact simulations based on current data
-    const pollutionImpacts = currentData ? 
-      getPollutionImpactSimulations(currentData) : 
-      [];
-    
-    // Get dominant pollutant info if available
+    const pollutionImpacts = currentData
+      ? getPollutionImpactSimulations(currentData)
+      : [];
+
     let dominantPollutantInfo = null;
-    if (currentData && currentData.dominant_pollutant) {
+    if (currentData?.dominant_pollutant) {
       dominantPollutantInfo = pollutantInfo[currentData.dominant_pollutant] || null;
     }
-    
-    // Prepare response
+
     const response = {
       title: "SkyLENS Air Quality Monitoring System",
       news: {
@@ -47,7 +40,7 @@ async function getHomepage(req, res, next) {
       pollutionImpacts,
       pollutantInfo: dominantPollutantInfo
     };
-    
+
     return res.json(response);
   } catch (error) {
     next(error);

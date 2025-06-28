@@ -6,12 +6,16 @@ WORKDIR /usr/src/app
 # Install app dependencies
 COPY package*.json ./
 RUN npm install
+RUN mkdir -p /app/credentials
 
 # Bundle app source
 COPY . .
 
 # Expose port
 EXPOSE 3000
+
+# Set environment variables
+ENV NODE_ENV=production
 
 # Run the app
 CMD [ "node", "src/index.js" ]

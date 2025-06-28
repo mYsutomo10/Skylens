@@ -1,24 +1,37 @@
 const axios = require('axios');
 const NodeCache = require('node-cache');
-const { config } = require('../config');
+const { loadConfig } = require('../config');
 
-// Initialize cache with TTL of 3 hours
-const newsCache = new NodeCache({ stdTTL: config.gnews.cacheTtl });
+let newsCache = null;
+let cacheTtl = 10800; // default 3 jam
+let initialized = false;
 
-const CACHE_KEY = 'environmental_news';
+/**
+ * Inisialisasi cache setelah config tersedia
+ */
+async function initializeCache() {
+  if (initialized) return;
+  const config = await loadConfig();
+
+  cacheTtl = config.gnews.cacheTtl;
+  newsCache = new NodeCache({ stdTTL: cacheTtl });
+  initialized = true;
+}
 
 /**
  * Fetch environmental news from GNews API
  */
 async function fetchEnvironmentalNews() {
   try {
-    // Check if news is in cache
+    await initializeCache();
+    const config = await loadConfig();
+
+    const CACHE_KEY = 'environmental_news';
     const cachedNews = newsCache.get(CACHE_KEY);
     if (cachedNews) {
       return cachedNews;
     }
 
-    // Fetch news from API
     const response = await axios.get(`${config.gnews.apiUrl}/search`, {
       params: {
         q: 'air pollution OR environment OR climate',
@@ -30,8 +43,6 @@ async function fetchEnvironmentalNews() {
     });
 
     const news = response.data.articles || [];
-    
-    // Process news data
     const processedNews = news.map(article => ({
       title: article.title,
       description: article.description,
@@ -42,15 +53,11 @@ async function fetchEnvironmentalNews() {
       source: article.source.name
     }));
 
-    // Cache the news
     newsCache.set(CACHE_KEY, processedNews);
-
     return processedNews;
   } catch (error) {
     console.error('Error fetching environmental news:', error);
-    
-    // If API call fails, return empty array or cached data if available
-    return newsCache.get(CACHE_KEY) || [];
+    return newsCache?.get('environmental_news') || [];
   }
 }
 

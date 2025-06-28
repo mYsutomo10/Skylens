@@ -1,4 +1,4 @@
-const { config } = require('../config');
+const { loadConfig } = require('../config');
 const { 
   getCurrentData: getFirebaseCurrentData, 
   getHistoricalData: getFirebaseHistoricalData, 
@@ -21,6 +21,7 @@ const {
  */
 async function getCurrentData(req, res, next) {
   try {
+    const config = await loadConfig();
     // Extract location from URL path
     const locationPath = req.path.split('/')[1];
     const location = decodeURIComponent(locationPath);
@@ -84,6 +85,7 @@ async function getCurrentData(req, res, next) {
  */
 async function getHistoricalData(req, res, next) {
   try {
+    const config = await loadConfig();
     // Extract location from URL path
     const pathParts = req.path.split('/');
     const locationPath = pathParts[1];
@@ -156,6 +158,7 @@ async function getHistoricalData(req, res, next) {
  */
 async function getForecastData(req, res, next) {
   try {
+    const config = await loadConfig();
     // Extract location from URL path
     const pathParts = req.path.split('/');
     const locationPath = pathParts[1];

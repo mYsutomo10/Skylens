@@ -1,6 +1,5 @@
 const admin = require('firebase-admin');
-const path = require('path');
-const { config } = require('../config');
+const { loadConfig } = require('../config');
 
 let firestore;
 
@@ -9,16 +8,18 @@ let firestore;
  */
 function initializeFirebase() {
   try {
-    const serviceAccountPath = path.resolve(config.firebase.privateKeyPath);
-    
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccountPath),
-      projectId: config.firebase.projectId
-    });
-    
+    if (admin.apps.length === 0) {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: config.firebase.projectId,
+          clientEmail: config.firebase.clientEmail,
+          privateKey: config.firebase.privateKey
+        })
+      });
+    }
+
     firestore = admin.firestore();
     console.log('Firebase initialized successfully');
-    
     return firestore;
   } catch (error) {
     console.error('Error initializing Firebase:', error);
@@ -38,30 +39,19 @@ function getFirestore() {
 
 /**
  * Get current air quality data for a specific sensor
- * @param {string} sensorId - The sensor ID
  */
 async function getCurrentData(sensorId) {
   try {
     const db = getFirestore();
 
-    //Get the most recent reading from current_data
     const currentRef = db.collection(`current_data/${sensorId}/main`);
-    const currentSnapshot = await currentRef
-      .orderBy('timestamp', 'desc')
-      .limit(1)
-      .get();
-
+    const currentSnapshot = await currentRef.orderBy('timestamp', 'desc').limit(1).get();
     const currentData = currentSnapshot.empty
       ? null
       : { id: currentSnapshot.docs[0].id, ...currentSnapshot.docs[0].data() };
 
-    //Get the most recent reading from processed_data
     const processedRef = db.collection(`processed_data/${sensorId}/readings`);
-    const processedSnapshot = await processedRef
-      .orderBy('timestamp', 'desc')
-      .limit(1)
-      .get();
-
+    const processedSnapshot = await processedRef.orderBy('timestamp', 'desc').limit(1).get();
     const processedData = processedSnapshot.empty
       ? null
       : { id: processedSnapshot.docs[0].id, ...processedSnapshot.docs[0].data() };
@@ -77,31 +67,24 @@ async function getCurrentData(sensorId) {
 }
 
 /**
- * Get historical air quality data for a specific sensor
- * @param {string} sensorId - The sensor ID
- * @param {string} timeRange - Time range ('1d', '7d', '30d')
+ * Get historical air quality data
  */
 async function getHistoricalData(sensorId, timeRange) {
   try {
+    const config = await loadConfig();
     const db = getFirestore();
-    
-    // Calculate start time based on time range
+
     const endTime = new Date();
     const startTime = new Date(endTime.getTime() - config.timeRanges[timeRange]);
-    
-    // Query historical data
+
     const readingsRef = db.collection(`current_data/${sensorId}/main`);
     const snapshot = await readingsRef
       .orderBy('timestamp', 'asc')
       .where('timestamp', '>=', startTime)
       .where('timestamp', '<=', endTime)
       .get();
-    
-    if (snapshot.empty) {
-      return [];
-    }
-    
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    return snapshot.empty ? [] : snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error(`Error fetching historical data for sensor ${sensorId}:`, error);
     throw error;
@@ -109,33 +92,24 @@ async function getHistoricalData(sensorId, timeRange) {
 }
 
 /**
- * Get forecast air quality data for a specific sensor
- * @param {string} sensorId - The sensor ID
- * @param {string} timeRange - Time range ('1d', '3d')
+ * Get forecast air quality data
  */
 async function getForecastData(sensorId, timeRange) {
   try {
+    const config = await loadConfig();
     const db = getFirestore();
-    
-    // Calculate hours based on time range
+
     const hours = config.forecastRanges[timeRange];
-    
-    // Get current time
     const currentTime = new Date();
-    
-    // Query forecast data
+
     const readingsRef = db.collection(`forecast_data/${sensorId}/main`);
     const snapshot = await readingsRef
       .where('timestamp', '>=', currentTime)
       .orderBy('timestamp', 'asc')
       .limit(hours)
       .get();
-    
-    if (snapshot.empty) {
-      return [];
-    }
-    
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    return snapshot.empty ? [] : snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error(`Error fetching forecast data for sensor ${sensorId}:`, error);
     throw error;
