@@ -43,20 +43,33 @@ function getFirestore() {
 async function getCurrentData(sensorId) {
   try {
     const db = getFirestore();
-    
-    // Get the most recent reading
-    const readingsRef = db.collection(`current_data/${sensorId}/main`);
-    const snapshot = await readingsRef
+
+    // 1. Get the most recent reading from current_data
+    const currentRef = db.collection(`current_data/${sensorId}/main`);
+    const currentSnapshot = await currentRef
       .orderBy('timestamp', 'desc')
       .limit(1)
       .get();
-    
-    if (snapshot.empty) {
-      return null;
-    }
-    
-    const doc = snapshot.docs[0];
-    return { id: doc.id, ...doc.data() };
+
+    const currentData = currentSnapshot.empty
+      ? null
+      : { id: currentSnapshot.docs[0].id, ...currentSnapshot.docs[0].data() };
+
+    // 2. Get the most recent reading from processed_data
+    const processedRef = db.collection(`processed_data/${sensorId}/readings`);
+    const processedSnapshot = await processedRef
+      .orderBy('timestamp', 'desc')
+      .limit(1)
+      .get();
+
+    const processedData = processedSnapshot.empty
+      ? null
+      : { id: processedSnapshot.docs[0].id, ...processedSnapshot.docs[0].data() };
+
+    return {
+      current: currentData,
+      processed: processedData
+    };
   } catch (error) {
     console.error(`Error fetching current data for sensor ${sensorId}:`, error);
     throw error;
