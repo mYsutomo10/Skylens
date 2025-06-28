@@ -8,7 +8,7 @@ let firestore;
  */
 function initializeFirebase() {
   try {
-    if (admin.apps.length === 0) {
+    if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId: config.firebase.projectId,

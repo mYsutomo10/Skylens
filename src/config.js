@@ -1,4 +1,4 @@
-const AWS = require('aws-sdk');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 require('dotenv').config();
 
 let cachedConfig = null;
@@ -6,61 +6,58 @@ let cachedConfig = null;
 async function loadConfig() {
   if (cachedConfig) return cachedConfig;
 
-  let env = process.env;
+  const secretName = 'skylens/backend/env';
+  const client = new SecretsManagerClient({ region: 'ap-southeast-3' });
 
-  if (env.NODE_ENV !== 'development') {
-    const region = env.AWS_REGION || 'ap-southeast-3';
-    const secretName = env.AWS_SECRET_NAME;
+  try {
+    const command = new GetSecretValueCommand({ SecretId: secretName });
+    const response = await client.send(command);
 
-    const client = new AWS.SecretsManager({ region });
-    const data = await client.getSecretValue({ SecretId: secretName }).promise();
-    env = JSON.parse(data.SecretString); // override env variable source
-  }
+    const secrets = JSON.parse(response.SecretString);
 
-  const config = {
-    port: env.PORT || 3000,
-    environment: env.NODE_ENV || 'development',
-    isDevelopment: (env.NODE_ENV || 'development') === 'development',
+    const config = {
+      port: secrets.PORT || 3000,
+      environment: secrets.NODE_ENV || 'production',
+      isDevelopment: (secrets.NODE_ENV || 'production') === 'development',
 
-    firebase: {
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL
-    },
+      firebase: {
+        projectId: secrets.FIREBASE_PROJECT_ID,
+        clientEmail: secrets.FIREBASE_CLIENT_EMAIL,
+        privateKey: secrets.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+      },
 
-    gnews: {
-      apiKey: process.env.GNEWS_API_KEY,
-      apiUrl: process.env.GNEWS_API_URL,
-      cacheTtl: parseInt(process.env.GNEWS_CACHE_TTL, 10) || 10800
-    },
+      gnews: {
+        apiKey: secrets.GNEWS_API_KEY,
+        apiUrl: secrets.GNEWS_API_URL,
+        cacheTtl: parseInt(secrets.GNEWS_CACHE_TTL, 10) || 10800
+      },
 
-    sensors: {
-      sensorIds: {
-        'Jalan Radio': 'sensor001',
-        'Baleendah': 'sensor002'
+      sensors: {
+        sensorIds: {
+          'Jalan Radio': 'sensor001',
+          'Baleendah': 'sensor002'
+        }
+      },
+
+      timeRanges: {
+        '1d': 24 * 60 * 60 * 1000,
+        '7d': 7 * 24 * 60 * 60 * 1000,
+        '30d': 30 * 24 * 60 * 60 * 1000
       }
-    },
+    };
 
-    timeRanges: {
-      '1d': 24 * 60 * 60 * 1000,
-      '7d': 7 * 24 * 60 * 60 * 1000,
-      '30d': 30 * 24 * 60 * 60 * 1000
-    },
+    config.sensors.locationBySensorId = Object.entries(config.sensors.sensorIds)
+      .reduce((acc, [location, id]) => {
+        acc[id] = location;
+        return acc;
+      }, {});
 
-    forecastRanges: {
-      '1d': 24,
-      '3d': 72
-    }
-  };
-
-  config.sensors.locationBySensorId = Object.entries(config.sensors.sensorIds)
-    .reduce((acc, [location, id]) => {
-      acc[id] = location;
-      return acc;
-    }, {});
-
-  cachedConfig = config;
-  return config;
+    cachedConfig = config;
+    return config;
+  } catch (err) {
+    console.error('Failed to load config from Secrets Manager:', err);
+    throw err;
+  }
 }
 
 module.exports = { loadConfig };
