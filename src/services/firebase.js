@@ -44,7 +44,7 @@ async function getCurrentData(sensorId) {
   try {
     const db = getFirestore();
 
-    // 1. Get the most recent reading from current_data
+    //Get the most recent reading from current_data
     const currentRef = db.collection(`current_data/${sensorId}/main`);
     const currentSnapshot = await currentRef
       .orderBy('timestamp', 'desc')
@@ -55,7 +55,7 @@ async function getCurrentData(sensorId) {
       ? null
       : { id: currentSnapshot.docs[0].id, ...currentSnapshot.docs[0].data() };
 
-    // 2. Get the most recent reading from processed_data
+    //Get the most recent reading from processed_data
     const processedRef = db.collection(`processed_data/${sensorId}/readings`);
     const processedSnapshot = await processedRef
       .orderBy('timestamp', 'desc')
