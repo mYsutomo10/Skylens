@@ -4,11 +4,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const routes = require('./routes');
 const { initializeFirebase } = require('./services/firebase');
-const { loadConfig } = require('./config');
+const { config } = require('./config');
 
 (async () => {
   try {
-    const config = await loadConfig();
     await initializeFirebase(config);
 
     const app = express();
@@ -30,7 +29,7 @@ const { loadConfig } = require('./config');
     });
 
     const PORT = config.port;
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`http://localhost:${PORT}`);
     });

@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const { loadConfig } = require('../config');
+const { config } = require('../config');
 
 let firestore;
 
@@ -8,7 +8,6 @@ let firestore;
  */
 async function initializeFirebase() {
   try {
-    const config = await loadConfig();
     if (!admin.apps.length) {
       admin.initializeApp({
         credential: admin.credential.cert({
@@ -72,7 +71,6 @@ async function getCurrentData(sensorId) {
  */
 async function getHistoricalData(sensorId, timeRange) {
   try {
-    const config = await loadConfig();
     const db = getFirestore();
 
     const endTime = new Date();

@@ -3,7 +3,7 @@ const { getDailyTip } = require('../utils/dailyTips');
 const { pollutantInfo } = require('../utils/pollutantInfo');
 const { getPollutionImpactSimulations } = require('../utils/pollutionImpact');
 const { getCurrentData } = require('../services/firebase');
-const { loadConfig } = require('../config');
+const { config } = require('../config');
 
 /**
  * Get homepage data including news, daily tip, and pollution impacts
@@ -13,8 +13,6 @@ const { loadConfig } = require('../config');
  */
 async function getHomepage(req, res, next) {
   try {
-    const config = await loadConfig();
-
     const sensorId = config.sensors.sensorIds['Jalan Radio'];
     const currentData = await getCurrentData(sensorId);
 

@@ -1,63 +1,40 @@
-const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 require('dotenv').config();
 
-let cachedConfig = null;
+const config = {
+  port: process.env.PORT || 3000,
+  environment: process.env.NODE_ENV || 'production',
+  isDevelopment: (process.env.NODE_ENV || 'production') === 'development',
 
-async function loadConfig() {
-  if (cachedConfig) return cachedConfig;
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+  },
 
-  const secretName = 'skylens/backend/env';
-  const client = new SecretsManagerClient({ region: 'ap-southeast-3' });
+  gnews: {
+    apiKey: process.env.GNEWS_API_KEY,
+    apiUrl: process.env.GNEWS_API_URL,
+    cacheTtl: parseInt(process.env.GNEWS_CACHE_TTL, 10) || 10800
+  },
 
-  try {
-    const command = new GetSecretValueCommand({ SecretId: secretName });
-    const response = await client.send(command);
+  sensors: {
+    sensorIds: {
+      'Jalan Radio': 'sensor001',
+      'Baleendah': 'sensor002'
+    }
+  },
 
-    const secrets = JSON.parse(response.SecretString);
-
-    const config = {
-      port: secrets.PORT || 3000,
-      environment: secrets.NODE_ENV || 'production',
-      isDevelopment: (secrets.NODE_ENV || 'production') === 'development',
-
-      firebase: {
-        projectId: secrets.FIREBASE_PROJECT_ID,
-        clientEmail: secrets.FIREBASE_CLIENT_EMAIL,
-        privateKey: secrets.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-      },
-
-      gnews: {
-        apiKey: secrets.GNEWS_API_KEY,
-        apiUrl: secrets.GNEWS_API_URL,
-        cacheTtl: parseInt(secrets.GNEWS_CACHE_TTL, 10) || 10800
-      },
-
-      sensors: {
-        sensorIds: {
-          'Jalan Radio': 'sensor001',
-          'Baleendah': 'sensor002'
-        }
-      },
-
-      timeRanges: {
-        '1d': 24 * 60 * 60 * 1000,
-        '7d': 7 * 24 * 60 * 60 * 1000,
-        '30d': 30 * 24 * 60 * 60 * 1000
-      }
-    };
-
-    config.sensors.locationBySensorId = Object.entries(config.sensors.sensorIds)
-      .reduce((acc, [location, id]) => {
-        acc[id] = location;
-        return acc;
-      }, {});
-
-    cachedConfig = config;
-    return config;
-  } catch (err) {
-    console.error('Failed to load config from Secrets Manager:', err);
-    throw err;
+  timeRanges: {
+    '1d': 24 * 60 * 60 * 1000,
+    '7d': 7 * 24 * 60 * 60 * 1000,
+    '30d': 30 * 24 * 60 * 60 * 1000
   }
-}
+};
 
-module.exports = { loadConfig };
+config.sensors.locationBySensorId = Object.entries(config.sensors.sensorIds)
+  .reduce((acc, [location, id]) => {
+    acc[id] = location;
+    return acc;
+  }, {});
+
+module.exports = { config };

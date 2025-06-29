@@ -1,6 +1,6 @@
 const axios = require('axios');
 const NodeCache = require('node-cache');
-const { loadConfig } = require('../config');
+const { config } = require('../config');
 
 let newsCache = null;
 let cacheTtl = 10800; // default 3 jam
@@ -11,7 +11,6 @@ let initialized = false;
  */
 async function initializeCache() {
   if (initialized) return;
-  const config = await loadConfig();
 
   cacheTtl = config.gnews.cacheTtl;
   newsCache = new NodeCache({ stdTTL: cacheTtl });
@@ -24,7 +23,6 @@ async function initializeCache() {
 async function fetchEnvironmentalNews() {
   try {
     await initializeCache();
-    const config = await loadConfig();
 
     const CACHE_KEY = 'environmental_news';
     const cachedNews = newsCache.get(CACHE_KEY);
