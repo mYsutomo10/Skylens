@@ -9,6 +9,7 @@ RUN npm install --production
 
 # Bundle app source
 COPY . .
+COPY firebase-service-account.json ./firebase-service-account.json
 
 # Expose port
 EXPOSE 3000

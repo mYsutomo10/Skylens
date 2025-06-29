@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
-const { config } = require('../config');
+const path = require('path');
 
+const serviceAccount = require(path.join(__dirname, '../../firebase-service-account.json'));
 let firestore;
 
 /**
@@ -10,11 +11,7 @@ async function initializeFirebase() {
   try {
     if (!admin.apps.length) {
       admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: config.firebase.projectId,
-          clientEmail: config.firebase.clientEmail,
-          privateKey: config.firebase.privateKey
-        })
+        credential: admin.credential.cert(serviceAccount)
       });
     }
 
