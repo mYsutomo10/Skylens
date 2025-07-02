@@ -43,6 +43,8 @@ export async function handler(event) {
       no2: payload.no2
     });
 
+    const locationName = await reverseGeocode(payload.lat, payload.lon);
+
     const ref = db
       .collection('current_data')
       .doc(payload.id)
@@ -52,7 +54,7 @@ export async function handler(event) {
     // Simpan ke Firestore
     await ref.set({
       id: payload.id,
-      name: payload.name,
+      name: locationName || payload.name,
       location: { lat: payload.lat, lon: payload.lon },
       timestamp,
       components: {

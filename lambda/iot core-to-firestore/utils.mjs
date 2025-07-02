@@ -1,3 +1,5 @@
+import fetch from 'node-fetch';
+
 const AQI_BREAKPOINTS = {
     pm2_5: [
       [0.0, 12.0, 0, 50],
@@ -81,3 +83,29 @@ const AQI_BREAKPOINTS = {
   
     return [maxAQI, dominantPollutant];
   }
+
+  const locationCache = new Map();
+
+export async function reverseGeocode(lat, lon) {
+  const roundedKey = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+
+  if (locationCache.has(roundedKey)) {
+    return locationCache.get(roundedKey);
+  }
+
+  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`;
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'SensorAQILambda/1.0 (yogasutomo67@gmail.com)'
+    }
+  });
+
+  if (!res.ok) throw new Error(`Reverse geocoding failed: ${res.statusText}`);
+
+  const data = await res.json();
+  const name = data.display_name || "Unknown location";
+
+  locationCache.set(roundedKey, name);
+  return name;
+}

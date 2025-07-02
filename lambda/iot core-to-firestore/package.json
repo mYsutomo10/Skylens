@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Lambda function untuk ETL data IoT ke Firestore",
-  "main": "index.js",
+  "main": "index.mjs",
   "scripts": {
     "test": "node test.js"
   },
   "dependencies": {
     "firebase-admin": "^12.0.0",
-    "luxon": "^3.6.1"
+    "luxon": "^3.6.1",
+    "node-fetch": "^3.3.2"
   }
 }
