@@ -1,15 +1,17 @@
 import admin from 'firebase-admin';
 import { DateTime } from 'luxon';
-import { calculateAQI } from './utils.mjs';
+import { calculateAQI, reverseGeocode } from './utils.mjs';
 import serviceAccount from './firebase-service-account.json' assert { type: 'json' };
 
 // Inisialisasi Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
 const db = admin.firestore();
 
-// Format timestamp ke "YYYYMMDDTHHMM" berdasarkan zona waktu Asia/Jakarta
+// Format timestamp ke "YYYYMMDDTHHMM"
 function formatTimestampKey(date) {
   const dt = DateTime.fromJSDate(date, { zone: 'Asia/Jakarta' });
   const yyyy = dt.year;
@@ -20,16 +22,20 @@ function formatTimestampKey(date) {
   return `${yyyy}${mm}${dd}T${hh}${m}`;
 }
 
-// Handler utama menerima event dari IoT Core
 export async function handler(event) {
   try {
-    const payload = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
-
-    if (!payload.id || !payload.name) {
-      throw new Error('Missing required fields: id or name');
+    let payload;
+    if (event.body) {
+      payload = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+    } else {
+      payload = event;
     }
 
-    // Gunakan waktu saat ini (waktu kedatangan data) sebagai timestamp
+    // Validasi field penting
+    if (!payload.id || payload.lat == null || payload.lon == null) {
+      throw new Error('Missing required fields: id, lat, or lon');
+    }
+
     const dt = DateTime.now().setZone('Asia/Jakarta');
     const timestamp = dt.toJSDate();
     const docId = formatTimestampKey(timestamp);
@@ -45,17 +51,19 @@ export async function handler(event) {
 
     const locationName = await reverseGeocode(payload.lat, payload.lon);
 
+    // Simpan ke Firestore
     const ref = db
-      .collection('current_data')
+      .collection('processed_data')
       .doc(payload.id)
       .collection('readings')
       .doc(docId);
 
-    // Simpan ke Firestore
     await ref.set({
       id: payload.id,
-      name: locationName || payload.name,
-      location: { lat: payload.lat, lon: payload.lon },
+      location: { 
+        lat: payload.lat, 
+        lon: payload.lon, 
+        name: locationName || payload.name },
       timestamp,
       components: {
         pm2_5: payload.pm2_5,
@@ -73,9 +81,10 @@ export async function handler(event) {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: 'IoT data stored successfully with AQI calculation.',
+        message: 'Data stored successfully with AQI and location caching.',
         aqi,
-        dominant_pollutant: dominantPollutant
+        dominant_pollutant: dominantPollutant,
+        location_name: locationName
       })
     };
   } catch (err) {

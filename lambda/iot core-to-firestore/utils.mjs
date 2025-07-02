@@ -88,7 +88,6 @@ const AQI_BREAKPOINTS = {
 
 export async function reverseGeocode(lat, lon) {
   const roundedKey = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-
   if (locationCache.has(roundedKey)) {
     return locationCache.get(roundedKey);
   }
@@ -104,7 +103,16 @@ export async function reverseGeocode(lat, lon) {
   if (!res.ok) throw new Error(`Reverse geocoding failed: ${res.statusText}`);
 
   const data = await res.json();
-  const name = data.display_name || "Unknown location";
+  const addr = data.address || {};
+
+  // Ambil komponen singkat
+  const parts = [
+    addr.village || addr.suburb,
+    addr.county,
+    addr.city || addr.town || addr.municipality || addr.state_district
+  ].filter(Boolean);
+
+  const name = parts.join(', ') || 'Unknown location';
 
   locationCache.set(roundedKey, name);
   return name;
