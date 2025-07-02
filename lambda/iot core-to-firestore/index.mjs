@@ -1,6 +1,6 @@
 import admin from 'firebase-admin';
 import { DateTime } from 'luxon';
-import { calculateAQI, reverseGeocode } from './utils.mjs';
+import { calculateAQI, round2, reverseGeocode } from './utils.mjs';
 import serviceAccount from './firebase-service-account.json' assert { type: 'json' };
 
 // Inisialisasi Firebase Admin
@@ -66,12 +66,12 @@ export async function handler(event) {
         name: locationName || payload.name },
       timestamp,
       components: {
-        pm2_5: payload.pm2_5,
-        pm10: payload.pm10,
-        o3: payload.o3,
-        co: payload.co,
-        no2: payload.no2,
-        nh3: payload.nh3
+        pm2_5: round2(payload.pm2_5),
+        pm10: round2(payload.pm10),
+        o3: round2(payload.o3),
+        co: round2(payload.co),
+        no2: round2(payload.no2),
+        nh3: round2(payload.nh3)
       },
       aqi,
       dominant_pollutant: dominantPollutant,

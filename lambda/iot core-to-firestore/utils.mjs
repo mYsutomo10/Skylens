@@ -86,34 +86,38 @@ const AQI_BREAKPOINTS = {
 
   const locationCache = new Map();
 
-export async function reverseGeocode(lat, lon) {
-  const roundedKey = `${lat.toFixed(4)},${lon.toFixed(4)}`;
-  if (locationCache.has(roundedKey)) {
-    return locationCache.get(roundedKey);
+  export function round2(value) {
+    return typeof value === 'number' ? Math.round(value * 100) / 100 : null;
   }
 
-  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`;
-
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'SensorAQILambda/1.0 (yogasutomo67@gmail.com)'
+  export async function reverseGeocode(lat, lon) {
+    const roundedKey = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+    if (locationCache.has(roundedKey)) {
+      return locationCache.get(roundedKey);
     }
-  });
-
-  if (!res.ok) throw new Error(`Reverse geocoding failed: ${res.statusText}`);
-
-  const data = await res.json();
-  const addr = data.address || {};
-
-  // Ambil komponen singkat
-  const parts = [
-    addr.village || addr.suburb,
-    addr.county,
-    addr.city || addr.town || addr.municipality || addr.state_district
-  ].filter(Boolean);
-
-  const name = parts.join(', ') || 'Unknown location';
-
-  locationCache.set(roundedKey, name);
-  return name;
-}
+  
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`;
+  
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'SensorAQILambda/1.0 (yogasutomo67@gmail.com)'
+      }
+    });
+  
+    if (!res.ok) throw new Error(`Reverse geocoding failed: ${res.statusText}`);
+  
+    const data = await res.json();
+    const addr = data.address || {};
+  
+    // Ambil komponen singkat
+    const parts = [
+      addr.village || addr.suburb,
+      addr.city || addr.town || addr.municipality || addr.state_district,
+      addr.county,
+    ].filter(Boolean);
+  
+    const name = parts.join(', ') || 'Unknown location';
+  
+    locationCache.set(roundedKey, name);
+    return name;
+  }
