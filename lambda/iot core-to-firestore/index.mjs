@@ -32,8 +32,8 @@ export async function handler(event) {
     }
 
     // Validasi field penting
-    if (!payload.id || payload.lat == null || payload.lon == null) {
-      throw new Error('Missing required fields: id, lat, or lon');
+    if (!payload.id) {
+      throw new Error('Missing required fields: id');
     }
 
     const dt = DateTime.now().setZone('Asia/Jakarta');
@@ -63,7 +63,7 @@ export async function handler(event) {
       location: { 
         lat: payload.lat, 
         lon: payload.lon, 
-        name: locationName || payload.name },
+        name: locationName || payload.name},
       timestamp,
       components: {
         pm2_5: round2(payload.pm2_5),
