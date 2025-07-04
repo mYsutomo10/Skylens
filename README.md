@@ -1,4 +1,4 @@
-# SkyLENS Backend API
+# SkyLENS Backend
 
 A comprehensive air quality monitoring system backend that provides real-time air quality data, forecasts, and health recommendations for multiple sensor locations.
 
