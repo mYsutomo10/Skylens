@@ -1,5 +1,6 @@
 const admin = require('firebase-admin');
 const path = require('path');
+const { config } = require('../config');
 
 const serviceAccount = require(path.join(__dirname, '../../firebase-service-account.json'));
 let firestore;
