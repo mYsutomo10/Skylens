@@ -29,7 +29,7 @@ db = init_firestore()
 
 # Cari dokumen Firestore dengan timestamp terdekat ke HH:00
 def get_nearest_doc(sensor_id, target_time):
-    collection = db.collection(f"current_data/{sensor_id}/dummy")
+    collection = db.collection(f"current_data/{sensor_id}/main")
 
     closest_doc = None
     closest_diff = timedelta.max
@@ -71,7 +71,7 @@ def fetch_sensor_data(sensor_id, reference_time, hours_back=77):
 
 # Simpan hasil prediksi ke Firestore
 def save_forecast(sensor_id, timestamp, forecast_data, location_data):
-    forecast_collection = db.collection(f"forecast_data/{sensor_id}/dummy")
+    forecast_collection = db.collection(f"forecast_data/{sensor_id}/main")
 
     for i, forecast in enumerate(forecast_data):
         forecast_ts = timestamp + timedelta(hours=i+1)
