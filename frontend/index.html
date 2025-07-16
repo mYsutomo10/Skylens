@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyLens - Air Quality Monitoring System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet Maps -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header>
+            <div class="logo-container">
+                <img src="Logo Skylens.png" alt="SkyLens Logo" id="logo">
+                <h1>SkyLens</h1>
+            </div>
+            <p class="tagline">Air Quality Monitoring System</p>
+            <div class="header-right">
+                <div class="current-time" id="current-time"></div>
+                <div class="current-date" id="current-date"></div>
+            </div>
+        </header>
+
+        <!-- Navigation Menu -->
+        <nav class="main-nav">
+            <ul>
+                <li><a href="#" class="nav-link active" data-page="home"><i class="fas fa-home"></i> Home</a></li>
+                <li><a href="#" class="nav-link" data-page="dashboard"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+            </ul>
+        </nav>
+
+        <!-- Page Container -->
+        <div class="page-container">
+            <!-- Home Page -->
+            <div class="page active" id="home-page">
+                <!-- Location Selection -->
+                <div class="location-selection">
+                    <div class="selection-container">
+                        <h2>Pilih Lokasi Monitoring</h2>
+                        <p class="selection-subtitle">Pilih lokasi untuk melihat data kualitas udara real-time</p>
+                        <div class="location-grid">
+                            <div class="location-card" data-location="baleendah">
+                                <div class="location-icon">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <h3>Baleendah</h3>
+                                <p>Kabupaten Bandung</p>
+                            </div>
+                            <div class="location-card" data-location="bojongsoang">
+                                <div class="location-icon">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <h3>Bojongsoang</h3>
+                                <p>Kabupaten Bandung</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- News and Education Section -->
+                <section class="home-grid">
+                    <!-- News Card -->
+                    <div class="card news-card">
+                        <h3><i class="fas fa-newspaper"></i> Berita Kualitas Udara</h3>
+                        <div class="news-container" id="news-container">
+                            <!-- News items will be dynamically loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Education Card -->
+                    <div class="card education-card">
+                        <h3><i class="fas fa-book-open"></i> Edukasi Polutan</h3>
+                        <div class="pollutant-tabs">
+                            <button class="pollutant-tab active" data-pollutant="pm25">PM2.5</button>
+                            <button class="pollutant-tab" data-pollutant="pm10">PM10</button>
+                            <button class="pollutant-tab" data-pollutant="co">CO</button>
+                            <button class="pollutant-tab" data-pollutant="o3">O₃</button>
+                            <button class="pollutant-tab" data-pollutant="no2">NO₂</button>
+                            <button class="pollutant-tab" data-pollutant="nh3">NH₃</button>
+                        </div>
+                        <div class="pollutant-content">
+                            <div class="pollutant-info active" id="pm25-info">
+                                <h4>PM2.5 (Particulate Matter 2.5)</h4>
+                                <div class="pollutant-icon"><i class="fas fa-smog"></i></div>
+                                <p>Partikel halus dengan diameter 2.5 mikrometer atau kurang. Dapat menembus jauh ke dalam paru-paru dan aliran darah.</p>
+                                <h5>Sumber:</h5>
+                                <p>Pembakaran bahan bakar fosil, kebakaran hutan, debu jalan, industri, asap kendaraan bermotor.</p>
+                                <h5>Dampak Kesehatan:</h5>
+                                <p>Gangguan pernapasan, penyakit jantung, stroke, kanker paru-paru, dan dapat memperburuk asma.</p>
+                                <h5>Batas Aman:</h5>
+                                <p>Baik: 0-15 µg/m³ | Sedang: 16-55 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 56-150 µg/m³</p>
+                            </div>
+                            <div class="pollutant-info" id="pm10-info">
+                                <h4>PM10 (Particulate Matter 10)</h4>
+                                <div class="pollutant-icon"><i class="fas fa-wind"></i></div>
+                                <p>Partikel dengan diameter 10 mikrometer atau kurang. Termasuk debu, serbuk sari, dan partikel organik.</p>
+                                <h5>Sumber:</h5>
+                                <p>Aktivitas konstruksi, jalan berdebu, pembakaran biomassa, proses industri, erosi tanah.</p>
+                                <h5>Dampak Kesehatan:</h5>
+                                <p>Iritasi mata dan tenggorokan, batuk, gangguan pernapasan, memperburuk asma dan bronkitis.</p>
+                                <h5>Batas Aman:</h5>
+                                <p>Baik: 0-50 µg/m³ | Sedang: 51-150 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 151-250 µg/m³</p>
+                            </div>
+                            <div class="pollutant-info" id="co-info">
+                                <h4>CO (Carbon Monoxide)</h4>
+                                <div class="pollutant-icon"><i class="fas fa-thermometer-half"></i></div>
+                                <p>Gas tidak berwarna, tidak berbau yang dihasilkan dari pembakaran tidak sempurna bahan bakar.</p>
+                                <h5>Sumber:</h5>
+                                <p>Kendaraan bermotor, pembakaran kayu, alat pemanas, generator, kompor gas yang tidak terawat.</p>
+                                <h5>Dampak Kesehatan:</h5>
+                                <p>Mengurangi kemampuan darah membawa oksigen, sakit kepala, mual, kelelahan, dapat menyebabkan kematian.</p>
+                                <h5>Batas Aman:</h5>
+                                <p>Baik: 0-5.000 µg/m³ | Sedang: 5.001-10.000 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 10.001-17.000 µg/m³</p>
+                            </div>
+                            <div class="pollutant-info" id="o3-info">
+                                <h4>O₃ (Ozone)</h4>
+                                <div class="pollutant-icon"><i class="fas fa-cloud"></i></div>
+                                <p>Gas yang terbentuk dari reaksi kimia antara nitrogen oksida (NOx) dan senyawa organik volatile (VOC) di bawah sinar matahari.</p>
+                                <h5>Sumber:</h5>
+                                <p>Emisi kendaraan, industri, cat, pelarut, pembangkit listrik yang bereaksi dengan sinar matahari.</p>
+                                <h5>Dampak Kesehatan:</h5>
+                                <p>Iritasi paru-paru, batuk, sesak napas, memperburuk asma, mengurangi fungsi paru-paru.</p>
+                                <h5>Batas Aman:</h5>
+                                <p>Baik: 0-100 µg/m³ | Sedang: 101-130 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 131-160 µg/m³</p>
+                            </div>
+                            <div class="pollutant-info" id="no2-info">
+                                <h4>NO₂ (Nitrogen Dioxide)</h4>
+                                <div class="pollutant-icon"><i class="fas fa-car"></i></div>
+                                <p>Gas berwarna coklat kemerahan dengan bau menyengat yang dihasilkan dari pembakaran pada suhu tinggi.</p>
+                                <h5>Sumber:</h5>
+                                <p>Kendaraan bermotor, pembangkit listrik, proses industri, pembakaran bahan bakar fosil.</p>
+                                <h5>Dampak Kesehatan:</h5>
+                                <p>Iritasi saluran pernapasan, memperburuk asma, bronkitis, mengurangi resistensi terhadap infeksi paru.</p>
+                                <h5>Batas Aman:</h5>
+                                <p>Baik: 0-40 µg/m³ | Sedang: 41-80 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 81-180 µg/m³</p>
+                            </div>
+                            <div class="pollutant-info" id="nh3-info">
+                                <h4>NH₃ (Ammonia)</h4>
+                                <div class="pollutant-icon"><i class="fas fa-industry"></i></div>
+                                <p>Gas tidak berwarna dengan bau menyengat yang kuat, mudah larut dalam air.</p>
+                                <h5>Sumber:</h5>
+                                <p>Pertanian (pupuk, kotoran ternak), proses industri, pembangkit listrik, kendaraan dengan sistem SCR.</p>
+                                <h5>Dampak Kesehatan:</h5>
+                                <p>Iritasi mata, hidung, dan tenggorokan, dapat menyebabkan luka bakar pada konsentrasi tinggi.</p>
+                                <h5>Batas Aman:</h5>
+                                <p>Baik: 0-100 µg/m³ | Sedang: 101-200 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 201-300 µg/m³</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Dashboard Page -->
+            <div class="page" id="dashboard-page">
+                <!-- Current Location Display -->
+                <div class="current-location-display">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="current-location-name"></span>
+                    <button id="change-location-btn"><i class="fas fa-search"></i> Ganti Lokasi</button>
+                </div>
+
+                <!-- AQI Overview Section -->
+                <section class="aqi-overview">
+                    <div class="card main-aqi bg-good">
+                        <h2>Air Quality Index (AQI)</h2>
+                        <div class="aqi-value" id="dashboard-aqi-value"></div>
+                        <div class="aqi-status" id="dashboard-aqi-status">
+                            <span class="emoji"></span>
+                            <span class="status-text"></span>
+                        </div>
+                        <div class="aqi-description" id="dashboard-aqi-description"></div>
+                        <div class="last-updated">Terakhir diperbarui: <span id="dashboard-last-updated-time"></span></div>
+                    </div>
+                    
+                    <!-- Parameter Cards -->
+                    <div class="parameters-grid">
+                        <div class="parameter-card" data-param="pm25">
+                            <div class="param-icon"><i class="fas fa-smog"></i></div>
+                            <div class="param-title">PM2.5</div>
+                            <div class="param-value" id="pm25-value"></div>
+                            <div class="param-unit">µg/m³</div>
+                        </div>
+                        <div class="parameter-card" data-param="pm10">
+                            <div class="param-icon"><i class="fas fa-wind"></i></div>
+                            <div class="param-title">PM10</div>
+                            <div class="param-value" id="pm10-value"></div>
+                            <div class="param-unit">µg/m³</div>
+                        </div>
+                        <div class="parameter-card" data-param="co">
+                            <div class="param-icon"><i class="fas fa-thermometer-half"></i></div>
+                            <div class="param-title">CO</div>
+                            <div class="param-value" id="co-value"></div>
+                            <div class="param-unit">µg/m³</div>
+                        </div>
+                        <div class="parameter-card" data-param="ozone">
+                            <div class="param-icon"><i class="fas fa-cloud"></i></div>
+                            <div class="param-title">O₃</div>
+                            <div class="param-value" id="ozone-value"></div>
+                            <div class="param-unit">µg/m³</div>
+                        </div>
+                        <div class="parameter-card" data-param="no2">
+                            <div class="param-icon"><i class="fas fa-car"></i></div>
+                            <div class="param-title">NO₂</div>
+                            <div class="param-value" id="no2-value"></div>
+                            <div class="param-unit">µg/m³</div>
+                        </div>
+                        <div class="parameter-card" data-param="nh3">
+                            <div class="param-icon"><i class="fas fa-industry"></i></div>
+                            <div class="param-title">NH₃</div>
+                            <div class="param-value" id="nh3-value"></div>
+                            <div class="param-unit">µg/m³</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Parameter Info Modal -->
+                <div class="modal" id="parameter-modal">
+                    <div class="modal-content">
+                        <span class="close-modal">&times;</span>
+                        <div class="modal-header">
+                            <div class="modal-icon"><i class="fas fa-smog"></i></div>
+                            <h3 id="modal-param-title"></h3>
+                        </div>
+                        <div class="modal-body">
+                            <div class="param-current">
+                                <div class="param-value-large" id="modal-param-value"></div>
+                                <div class="param-unit" id="modal-param-unit"></div>
+                                <div class="param-status" id="modal-param-status"></div>
+                                <div class="param-description" id="modal-param-description"></div>
+                            </div>
+                            <div class="param-info">
+                                <h4>Tentang Parameter Ini</h4>
+                                <p id="modal-param-about"></p>
+                                <h4>Sumber</h4>
+                                <p id="modal-param-sources"></p>
+                                <h4>Dampak Kesehatan</h4>
+                                <p id="modal-param-health"></p>
+                                <h4>Rekomendasi</h4>
+                                <p id="modal-param-recommendations"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts and Maps Section -->
+                <section class="dashboard-grid">
+                    <!-- Historical AQI Chart -->
+                    <div class="card chart-card">
+                        <h3>Histori AQI</h3>
+    
+                        <!-- Time Range Selector -->
+                        <div class="time-range-selector">
+                            <button class="time-range-btn active" data-range="24h">24 Jam</button>
+                            <button class="time-range-btn" data-range="7d">7 Hari</button>
+                            <button class="time-range-btn" data-range="30d">30 Hari</button>
+                        </div>
+    
+                        <div class="chart-container">
+                            <canvas id="aqi-history-chart"></canvas>
+                            <!-- Statistik AQI -->
+                            <div class="aqi-stats" id="aqi-history-stats">
+                                <div class="stat-group">
+                                    <div class="stat-item">
+                                        <div class="stat-label">Dominant Polutan</div>
+                                        <div class="stat-value" id="dominant-polutan">-</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-label">Max AQI</div>
+                                        <div class="stat-value" id="max-aqi">-</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-label">Min AQI</div>
+                                        <div class="stat-value" id="min-aqi">-</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-label">Average AQI</div>
+                                        <div class="stat-value" id="avg-aqi">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+ 
+                    <!-- AQI Forecast Chart -->
+                    <div class="card chart-card">
+                        <h3>Prakiraan AQI (24 Jam Kedepan)</h3>
+                        <div class="chart-container">
+                            <canvas id="aqi-forecast-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Map Card -->
+                    <div class="card map-card">
+                        <h3>Lokasi Perangkat Monitoring</h3>
+                        
+                        <!-- Map Update Note -->
+                        <div class="map-update-note">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Data kualitas udara diperbarui secara real-time dari seluruh lokasi pemantauan</span>
+                        </div>
+                        
+                        <div id="map-container"></div>
+                        <div class="map-legend">
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: #00e400;"></div>
+                                <div class="legend-text">Baik (0-50)</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: #ffff00;"></div>
+                                <div class="legend-text">Sedang (51-100)</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: #ff7e00;"></div>
+                                <div class="legend-text">Tidak Sehat untuk Kelompok Sensitif (101-150)</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: #ff0000;"></div>
+                                <div class="legend-text">Tidak Sehat (151-200)</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: #8f3f97;"></div>
+                                <div class="legend-text">Sangat Tidak Sehat (201-300)</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: #000000;"></div>
+                                <div class="legend-text">Berbahaya (301+)</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <p>&copy; <span id="current-year"></span> SkyLens Air Quality Monitoring System</p>
+        </footer>
+    </div>
+
+    <!-- Leaflet Maps JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <!-- Custom JS -->
+    <script src="script.js"></script>
+</body>
+</html>
