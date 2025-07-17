@@ -1,57 +1,36 @@
+//utils.mjs
 import moment from 'moment-timezone';
 
-/**
- * Parse timestamp string to moment object with Jakarta timezone
- * @param {string} timestampStr - Format: "20250616T1500"
- * @returns {moment.Moment} Parsed timestamp in Jakarta timezone
- */
 export function parseTimestamp(timestampStr) {
   try {
-    // Parse the timestamp string manually
     if (!/^\d{8}T\d{4}$/.test(timestampStr)) {
       throw new Error(`Invalid timestamp format: ${timestampStr}. Expected format: YYYYMMDDTHHMM`);
     }
-    
+
     const year = parseInt(timestampStr.substring(0, 4));
-    const month = parseInt(timestampStr.substring(4, 6)) - 1; // moment months are 0-indexed
+    const month = parseInt(timestampStr.substring(4, 6)) - 1;
     const day = parseInt(timestampStr.substring(6, 8));
     const hour = parseInt(timestampStr.substring(9, 11));
     const minute = parseInt(timestampStr.substring(11, 13));
-    
+
     const dt = moment.tz([year, month, day, hour, minute], "Asia/Jakarta");
-    
+
     if (!dt.isValid()) {
       throw new Error(`Invalid timestamp values: ${timestampStr}`);
     }
-    
+
     return dt;
   } catch (error) {
-    if (error.message.includes('Invalid timestamp')) {
-      throw error;
-    }
     throw new Error(`Invalid timestamp format: ${timestampStr}. Expected format: YYYYMMDDTHHMM`);
   }
 }
 
-/**
- * Generate timestamp for the current hour in Jakarta timezone
- * @returns {Object} Object with targetHour, hourStart, hourEnd, and timestampStr
- */
 export function generateCurrentHourTimestamp() {
-  // Get current time in Jakarta timezone
   const now = moment.tz("Asia/Jakarta");
-  
-  // Set to the beginning of the current hour (minute and second to 00)
   const targetHour = now.clone().startOf('hour');
-  
-  // Get hour range
   const { hourStart, hourEnd } = getHourRange(targetHour);
-  
-  // Generate timestamp string
   const timestampStr = targetHour.format('YYYYMMDDTHHMM');
-  
-  console.log(`Generated current hour timestamp: ${timestampStr} (Jakarta time)`);
-  
+
   return {
     targetHour,
     hourStart,
@@ -60,166 +39,195 @@ export function generateCurrentHourTimestamp() {
   };
 }
 
-/**
- * Get the start and end of the hour for the given moment
- * @param {moment.Moment} targetHour 
- * @returns {Object} Object with hourStart and hourEnd
- */
 export function getHourRange(targetHour) {
   const hourStart = targetHour.clone().startOf('hour');
   const hourEnd = targetHour.clone().endOf('hour');
   return { hourStart, hourEnd };
 }
 
-/**
- * Remove outliers from array of numbers using IQR method
- * @param {number[]} values - Array of numeric values
- * @param {string} method - Method to use ('iqr')
- * @returns {number[]} Filtered array without outliers
- */
 export function removeOutliers(values, method = 'iqr') {
-  if (values.length < 4) {
-    return values;
-  }
-
+  if (values.length < 4) return values;
   if (method === 'iqr') {
-    // Sort values for quantile calculation
     const sorted = [...values].sort((a, b) => a - b);
     const n = sorted.length;
-    
-    // Calculate Q1 and Q3
-    const q1Index = Math.floor(n * 0.25);
-    const q3Index = Math.floor(n * 0.75);
-    const q1 = sorted[q1Index];
-    const q3 = sorted[q3Index];
+    const q1 = sorted[Math.floor(n * 0.25)];
+    const q3 = sorted[Math.floor(n * 0.75)];
     const iqr = q3 - q1;
-    
-    // Calculate bounds
-    const lowerBound = q1 - 1.5 * iqr;
-    const upperBound = q3 + 1.5 * iqr;
-    
-    // Filter outliers
-    const filtered = values.filter(v => v >= lowerBound && v <= upperBound);
-    
-    console.log(`Removed ${values.length - filtered.length} outliers from ${values.length} values`);
-    return filtered;
+    const lower = q1 - 1.5 * iqr;
+    const upper = q3 + 1.5 * iqr;
+    return values.filter(v => v >= lower && v <= upper);
   }
-  
   return values;
 }
 
-/**
- * Calculate averages for air quality components with outlier removal
- * @param {Object[]} processedData - Array of processed data records
- * @returns {Object} Object with component averages
- */
 export function calculateAverages(processedData) {
-  // Initialize component arrays
+  console.log('calculateAverages - Input data:', JSON.stringify(processedData, null, 2));
+  
+  // Inisialisasi array untuk setiap komponen
   const components = {
     pm2_5: [],
     pm10: [],
     co: [],
     nh3: [],
     o3: [],
-    no2: [],
-    aqi: []
+    no2: []
   };
 
-  // Extract values from all records
-  for (const record of processedData) {
-    // Extract AQI
-    if (record.aqi !== null && record.aqi !== undefined) {
-      components.aqi.push(parseFloat(record.aqi));
-    }
-
-    // Extract components
-    if (record.components && typeof record.components === 'object') {
-      const comp = record.components;
-      for (const [key, value] of Object.entries(components)) {
-        if (key !== 'aqi' && comp[key] !== null && comp[key] !== undefined) {
-          components[key].push(parseFloat(comp[key]));
+  // Ekstrak nilai dari processedData dan masukkan ke dalam array
+  processedData.forEach((data, index) => {
+    console.log(`Processing data record ${index}:`, JSON.stringify(data, null, 2));
+    
+    // Cek berbagai kemungkinan struktur data
+    if (data.components) {
+      // Struktur: { components: { pm2_5: value, pm10: value, ... } }
+      console.log('Found components object:', JSON.stringify(data.components, null, 2));
+      Object.keys(components).forEach(key => {
+        const value = data.components[key];
+        if (value !== null && value !== undefined && typeof value === 'number') {
+          components[key].push(value);
+          console.log(`Added ${key}: ${value}`);
         }
-      }
-    }
-  }
-
-  // Calculate averages with outlier removal
-  const averages = {};
-  for (const [component, values] of Object.entries(components)) {
-    if (values.length > 0) {
-      // Remove outliers
-      const cleanValues = removeOutliers(values);
-      if (cleanValues.length > 0) {
-        averages[component] = cleanValues.reduce((sum, val) => sum + val, 0) / cleanValues.length;
-      } else {
-        // If all values were outliers, use original mean
-        averages[component] = values.reduce((sum, val) => sum + val, 0) / values.length;
-      }
+      });
+    } else if (data.main) {
+      // Struktur: { main: { pm2_5: value, pm10: value, ... } }
+      console.log('Found main object:', JSON.stringify(data.main, null, 2));
+      Object.keys(components).forEach(key => {
+        const value = data.main[key];
+        if (value !== null && value !== undefined && typeof value === 'number') {
+          components[key].push(value);
+          console.log(`Added ${key}: ${value}`);
+        }
+      });
     } else {
-      averages[component] = null;
+      // Struktur langsung: { pm2_5: value, pm10: value, ... }
+      console.log('Using direct structure');
+      Object.keys(components).forEach(key => {
+        const value = data[key];
+        if (value !== null && value !== undefined && typeof value === 'number') {
+          components[key].push(value);
+          console.log(`Added ${key}: ${value}`);
+        }
+      });
+    }
+  });
+
+  console.log('Components arrays after processing:', JSON.stringify(components, null, 2));
+
+  // Hitung rata-rata untuk setiap komponen
+  const averages = {};
+  for (const [key, values] of Object.entries(components)) {
+    console.log(`Processing component ${key} with ${values.length} values:`, values);
+    
+    if (values.length > 0) {
+      // Hapus outliers jika ada cukup data
+      const clean = removeOutliers(values);
+      const used = clean.length > 0 ? clean : values;
+      
+      const sum = used.reduce((sum, v) => sum + v, 0);
+      const average = sum / used.length;
+      averages[key] = Math.round(average * 10) / 10;
+      
+      console.log(`${key}: ${values.length} values -> ${clean.length} after outlier removal -> average: ${averages[key]}`);
+    } else {
+      averages[key] = null;
+      console.log(`${key}: No values found, setting to null`);
     }
   }
 
+  console.log('Final averages:', JSON.stringify(averages, null, 2));
   return averages;
 }
 
-/**
- * Determine the dominant pollutant based on component values
- * @param {Object} components - Object with component values
- * @returns {string} Dominant pollutant name
- */
-export function determineDominantPollutant(components) {
-  // Remove null/undefined values and AQI from comparison
-  const validComponents = {};
-  for (const [key, value] of Object.entries(components)) {
-    if (value !== null && value !== undefined && key !== 'aqi') {
-      validComponents[key] = value;
+const ISPU_BREAKPOINTS = {
+  pm10: [
+    { cLow: 0, cHigh: 50, iLow: 0, iHigh: 50 },
+    { cLow: 51, cHigh: 150, iLow: 51, iHigh: 100 },
+    { cLow: 151, cHigh: 350, iLow: 101, iHigh: 200 },
+    { cLow: 351, cHigh: 420, iLow: 201, iHigh: 300 },
+    { cLow: 421, cHigh: 500, iLow: 301, iHigh: 500 }
+  ],
+  pm2_5: [
+    { cLow: 0, cHigh: 15.5, iLow: 0, iHigh: 50 },
+    { cLow: 15.6, cHigh: 55.4, iLow: 51, iHigh: 100 },
+    { cLow: 55.5, cHigh: 150.4, iLow: 101, iHigh: 200 },
+    { cLow: 150.5, cHigh: 250.4, iLow: 201, iHigh: 300 },
+    { cLow: 250.5, cHigh: 500, iLow: 301, iHigh: 500 }
+  ],
+  co: [
+    { cLow: 0, cHigh: 4000, iLow: 0, iHigh: 50 },
+    { cLow: 4001, cHigh: 8000, iLow: 51, iHigh: 100 },
+    { cLow: 8001, cHigh: 15000, iLow: 101, iHigh: 200 },
+    { cLow: 15001, cHigh: 30000, iLow: 201, iHigh: 300 },
+    { cLow: 30001, cHigh: 45000, iLow: 301, iHigh: 500 }
+  ],
+  o3: [
+    { cLow: 0, cHigh: 120, iLow: 0, iHigh: 50 },
+    { cLow: 121, cHigh: 235, iLow: 51, iHigh: 100 },
+    { cLow: 236, cHigh: 400, iLow: 101, iHigh: 200 },
+    { cLow: 401, cHigh: 800, iLow: 201, iHigh: 300 },
+    { cLow: 801, cHigh: 1000, iLow: 301, iHigh: 500 }
+  ],
+  no2: [
+    { cLow: 0, cHigh: 80, iLow: 0, iHigh: 50 },
+    { cLow: 81, cHigh: 200, iLow: 51, iHigh: 100 },
+    { cLow: 201, cHigh: 1130, iLow: 101, iHigh: 200 },
+    { cLow: 1131, cHigh: 2260, iLow: 201, iHigh: 300 },
+    { cLow: 2261, cHigh: 3000, iLow: 301, iHigh: 500 }
+  ]
+};
+
+export function calculateISPU(component, concentration) {
+  console.log(`Calculating ISPU for ${component} with concentration: ${concentration}`);
+  
+  const breakpoints = ISPU_BREAKPOINTS[component];
+  if (!breakpoints || concentration == null) {
+    console.log(`No breakpoints found for ${component} or concentration is null`);
+    return null;
+  }
+
+  for (const bp of breakpoints) {
+    if (concentration >= bp.cLow && concentration <= bp.cHigh) {
+      const ispu = Math.round(
+        ((bp.iHigh - bp.iLow) / (bp.cHigh - bp.cLow)) * (concentration - bp.cLow) + bp.iLow
+      );
+      console.log(`ISPU for ${component}: ${ispu}`);
+      return ispu;
     }
   }
-
-  if (Object.keys(validComponents).length === 0) {
-    return "unknown";
-  }
-
-  // Find component with highest value (simplified approach)
-  const dominant = Object.keys(validComponents).reduce((a, b) => 
-    validComponents[a] > validComponents[b] ? a : b
-  );
-
-  // Map to standard pollutant names
-  const pollutantMap = {
-    'pm2_5': 'PM2.5',
-    'pm10': 'PM10',
-    'co': 'CO',
-    'nh3': 'NH3',
-    'o3': 'O3',
-    'no2': 'NO2'
-  };
-
-  return pollutantMap[dominant] || dominant;
+  
+  console.log(`Concentration ${concentration} for ${component} is outside all breakpoint ranges`);
+  return null;
 }
 
-/**
- * Process and aggregate the data
- * @param {Object[]} processedData - Array of processed data records
- * @param {Object} meteoData - Meteorological data object
- * @param {moment.Moment} targetHour - Target hour moment
- * @returns {Object} Aggregated data object
- */
 export function processAndAggregate(processedData, meteoData, targetHour) {
-  // Calculate averages for air quality components
+  console.log('processAndAggregate - Input processedData:', JSON.stringify(processedData, null, 2));
+  console.log('processAndAggregate - Input meteoData:', JSON.stringify(meteoData, null, 2));
+  
   const averages = calculateAverages(processedData);
+  console.log('processAndAggregate - Calculated averages:', JSON.stringify(averages, null, 2));
 
-  // Get location data from the first processed record
+  const ispuComponents = {};
+  for (const [key, value] of Object.entries(averages)) {
+    if (['pm2_5', 'pm10', 'co', 'no2', 'o3'].includes(key)) {
+      ispuComponents[key] = calculateISPU(key, value);
+    }
+  }
+  console.log('processAndAggregate - ISPU components:', JSON.stringify(ispuComponents, null, 2));
+
+  let aqi = null;
+  let dominantPollutant = 'unknown';
+  const valid = Object.entries(ispuComponents).filter(([_, v]) => v !== null);
+  if (valid.length > 0) {
+    valid.sort((a, b) => b[1] - a[1]);
+    [dominantPollutant, aqi] = valid[0];
+  }
+  console.log(`processAndAggregate - AQI: ${aqi}, Dominant pollutant: ${dominantPollutant}`);
+
   const locationData = processedData[0]?.location || {};
   const sensorId = processedData[0]?.id || '';
 
-  // Determine dominant pollutant
-  const dominantPollutant = determineDominantPollutant(averages);
-
-  // Structure the aggregated data
-  const aggregatedData = {
-    aqi: averages.aqi,
+  const result = {
+    aqi,
     components: {
       co: averages.co,
       nh3: averages.nh3,
@@ -228,13 +236,9 @@ export function processAndAggregate(processedData, meteoData, targetHour) {
       pm10: averages.pm10,
       pm2_5: averages.pm2_5
     },
-    dominant_pollutant: dominantPollutant,
+    dominant_pollutant: dominantPollutant.toUpperCase(),
     id: sensorId,
-    location: {
-      lat: locationData.lat,
-      lon: locationData.lon,
-      name: locationData.name
-    },
+    location: { name: locationData.name },
     meteo: {
       log_prcp: meteoData?.main?.log_prcp || 0,
       rhum: meteoData?.main?.rhum || null,
@@ -246,40 +250,22 @@ export function processAndAggregate(processedData, meteoData, targetHour) {
     timestamp: targetHour.toDate()
   };
 
-  return aggregatedData;
+  console.log('processAndAggregate - Final result:', JSON.stringify(result, null, 2));
+  return result;
 }
 
-/**
- * Create a standardized error response
- * @param {number} statusCode - HTTP status code
- * @param {string} message - Error message
- * @param {Object} details - Additional error details
- * @returns {Object} Lambda response object
- */
 export function createErrorResponse(statusCode, message, details = {}) {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      error: message,
-      ...details
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ error: message, ...details })
   };
 }
 
-/**
- * Create a standardized success response
- * @param {Object} data - Response data
- * @returns {Object} Lambda response object
- */
 export function createSuccessResponse(data) {
   return {
     statusCode: 200,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   };
 }
