@@ -1,9 +1,9 @@
 import admin from 'firebase-admin';
 import { DateTime } from 'luxon';
-import { calculateAQI, round2, reverseGeocode } from './utils.mjs';
+import { ppmToMicrogramPerCubicMeter } from './utils.mjs';
 import serviceAccount from './firebase-service-account.json' assert { type: 'json' };
 
-// Inisialisasi Firebase Admin
+// Firebase Admin Initialization
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -11,7 +11,12 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
-// Format timestamp ke "YYYYMMDDTHHMM"
+// Function to round 5 decimals
+function round5(value) {
+  return typeof value === 'number' ? Math.round(value * 100000) / 100000 : null;
+}
+
+// Format timestamp to “YYYYMMDDTHHMM”
 function formatTimestampKey(date) {
   const dt = DateTime.fromJSDate(date, { zone: 'Asia/Jakarta' });
   const yyyy = dt.year;
@@ -31,7 +36,6 @@ export async function handler(event) {
       payload = event;
     }
 
-    // Validasi field penting
     if (!payload.id) {
       throw new Error('Missing required fields: id');
     }
@@ -39,17 +43,6 @@ export async function handler(event) {
     const dt = DateTime.now().setZone('Asia/Jakarta');
     const timestamp = dt.toJSDate();
     const docId = formatTimestampKey(timestamp);
-
-    // Hitung AQI dan polutan dominan
-    const [aqi, dominantPollutant] = calculateAQI({
-      pm2_5: payload.pm2_5,
-      pm10: payload.pm10,
-      o3: payload.o3,
-      co: payload.co,
-      no2: payload.no2
-    });
-
-    const locationName = await reverseGeocode(payload.lat, payload.lon);
 
     // Simpan ke Firestore
     const ref = db
@@ -61,30 +54,24 @@ export async function handler(event) {
     await ref.set({
       id: payload.id,
       location: { 
-        lat: payload.lat, 
-        lon: payload.lon, 
-        name: locationName || payload.name},
+        name: payload.name || null
+      },
       timestamp,
       components: {
-        pm2_5: round2(payload.pm2_5),
-        pm10: round2(payload.pm10),
-        o3: round2(payload.o3),
-        co: round2(payload.co),
-        no2: round2(payload.no2),
-        nh3: round2(payload.nh3)
+        pm2_5: round5(payload.pm2_5),
+        pm10: round5(payload.pm10),
+        o3: round5(ppmToMicrogramPerCubicMeter(payload.o3, 'o3')),
+        co: round5(ppmToMicrogramPerCubicMeter(payload.co, 'co')),
+        no2: round5(ppmToMicrogramPerCubicMeter(payload.no2, 'no2')),
+        nh3: round5(ppmToMicrogramPerCubicMeter(payload.nh3, 'nh3'))
       },
-      aqi,
-      dominant_pollutant: dominantPollutant,
       created_at: admin.firestore.FieldValue.serverTimestamp()
     });
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: 'Data stored successfully with AQI and location caching.',
-        aqi,
-        dominant_pollutant: dominantPollutant,
-        location_name: locationName
+        message: 'Data stored successfully.'
       })
     };
   } catch (err) {
