@@ -1,3 +1,4 @@
+//index.mjs
 import admin from 'firebase-admin';
 import serviceAccount from './firebase-service-account.json' assert { type: 'json' };
 import { 
@@ -43,6 +44,7 @@ async function fetchProcessedData(sensorId, hourStart, hourEnd) {
     snapshot.forEach(doc => {
       const docData = doc.data();
       if (docData) {
+        console.log(`Raw processed data for ${sensorId}:`, JSON.stringify(docData, null, 2));
         data.push(docData);
       }
     });
@@ -69,6 +71,7 @@ async function fetchProcessedData(sensorId, hourStart, hourEnd) {
     snapshot.forEach(doc => {
       const docData = doc.data();
       if (docData && docData.timestamp) {
+        console.log(`Expanded search data for ${sensorId}:`, JSON.stringify(docData, null, 2));
         expandedData.push({
           ...docData,
           timeDiff: Math.abs(docData.timestamp.toDate().getTime() - hourStart.toDate().getTime())
@@ -117,8 +120,9 @@ async function fetchMeteoData(sensorId, targetHour) {
 
     const doc = await docRef.get();
     if (doc.exists) {
-      console.log(`Found exact meteo data for sensor ${sensorId} at ${timestampStr}`);
-      return doc.data();
+      const meteoData = doc.data();
+      console.log(`Found exact meteo data for sensor ${sensorId} at ${timestampStr}:`, JSON.stringify(meteoData, null, 2));
+      return meteoData;
     }
 
     // If exact match not found, try to find data within the hour
@@ -136,7 +140,7 @@ async function fetchMeteoData(sensorId, targetHour) {
 
     if (!snapshot.empty) {
       const docData = snapshot.docs[0].data();
-      console.log(`Found meteo data within target hour for sensor ${sensorId}`);
+      console.log(`Found meteo data within target hour for sensor ${sensorId}:`, JSON.stringify(docData, null, 2));
       return docData;
     }
 
@@ -176,6 +180,7 @@ async function fetchMeteoData(sensorId, targetHour) {
     if (closestData) {
       const timeDiffHours = minTimeDiff / (1000 * 60 * 60);
       console.log(`Found closest meteo data for sensor ${sensorId}, time difference: ${timeDiffHours.toFixed(2)} hours`);
+      console.log(`Closest meteo data:`, JSON.stringify(closestData, null, 2));
       return closestData;
     }
 
@@ -196,6 +201,8 @@ async function fetchMeteoData(sensorId, targetHour) {
  */
 async function storeAggregatedData(sensorId, timestamp, data) {
   try {
+    console.log(`Storing aggregated data for sensor ${sensorId}:`, JSON.stringify(data, null, 2));
+    
     const docRef = db
       .collection('current_data')
       .doc(sensorId)
@@ -263,7 +270,8 @@ async function processMultipleSensors(sensorIds, targetHour, hourStart, hourEnd)
         sensorId,
         status: 'success',
         timestamp: resultTimestamp,
-        recordsProcessed: processedData.length
+        recordsProcessed: processedData.length,
+        aggregatedData: aggregatedData // Include for debugging
       };
 
     } catch (error) {
