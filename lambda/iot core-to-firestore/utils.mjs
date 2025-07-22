@@ -32,8 +32,5 @@ export function ppbToMicrogramPerCubicMeter(ppb, gas) {
   const molarMass = MOLAR_MASSES[gas];
   if (!molarMass || typeof ppb !== 'number') return null;
 
-  // since 1 ppm = 1000 ppb, divide ppb by 1000 to get ppm
-  const ppm = ppb / 1000;
-
-  return ppm * (molarMass * 1000) / MOLAR_VOLUME;
+  return (ppb / 1000) * (molarMass * 1000) / MOLAR_VOLUME;
 }
