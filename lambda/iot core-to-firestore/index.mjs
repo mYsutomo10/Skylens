@@ -60,7 +60,7 @@ export async function handler(event) {
       components: {
         pm2_5: round5(payload.pm2_5),
         pm10: round5(payload.pm10),
-        o3: round5(ppmToMicrogramPerCubicMeter(payload.o3, 'o3')),
+        o3: round5(ppbToMicrogramPerCubicMeter(payload.o3, 'o3')),
         co: round5(ppmToMicrogramPerCubicMeter(payload.co, 'co')),
         no2: round5(ppmToMicrogramPerCubicMeter(payload.no2, 'no2')),
         nh3: round5(ppmToMicrogramPerCubicMeter(payload.nh3, 'nh3'))
