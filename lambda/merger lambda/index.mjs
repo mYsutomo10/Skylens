@@ -1,5 +1,6 @@
 //index.mjs
 import admin from 'firebase-admin';
+import moment from 'moment-timezone';
 import serviceAccount from './firebase-service-account.json' assert { type: 'json' };
 import { 
   parseTimestamp, 
@@ -220,25 +221,38 @@ async function storeAggregatedData(sensorId, timestamp, data) {
 /**
  * Process multiple sensors or single sensor
  * @param {string|string[]} sensorIds - Single sensor ID or array of sensor IDs
- * @param {moment.Moment} targetHour - Target hour moment
- * @param {moment.Moment} hourStart - Start of hour
- * @param {moment.Moment} hourEnd - End of hour
- * @returns {Promise<Object[]>} Array of processing results
+ * @returns {Promise<Object>} Processing results with metadata
  */
-async function processMultipleSensors(sensorIds, targetHour, hourStart, hourEnd) {
+async function processMultipleSensors(sensorIds) {
   const sensors = Array.isArray(sensorIds) ? sensorIds : [sensorIds];
   const results = [];
   const errors = [];
+  
+  // Track the hour range used for processing (will be set from first successful processing)
+  let processingHourStart = null;
+  let processingHourEnd = null;
 
   // Process all sensors concurrently
   const promises = sensors.map(async (sensorId) => {
     try {
       console.log(`Processing sensor: ${sensorId}`);
-      
-      // Fetch processed data for this sensor (with fallback to closest data)
-      const processedData = await fetchProcessedData(sensorId, hourStart, hourEnd);
-      
-      if (!processedData || processedData.length === 0) {
+
+      let targetHour = moment.tz("Asia/Jakarta").startOf('hour');
+      let { hourStart, hourEnd } = getHourRange(targetHour);
+      let processedData = await fetchProcessedData(sensorId, hourStart, hourEnd);
+
+      if (processedData && processedData.length > 0) {
+        processedData.sort((a, b) => a.timestamp.toDate() - b.timestamp.toDate());
+        const lastTimestamp = processedData[processedData.length - 1].timestamp.toDate();
+        targetHour = moment(lastTimestamp).tz("Asia/Jakarta").startOf('hour');
+        ({ hourStart, hourEnd } = getHourRange(targetHour)); // Update range
+        
+        // Set the processing hour range from the first successful processing
+        if (!processingHourStart) {
+          processingHourStart = hourStart;
+          processingHourEnd = hourEnd;
+        }
+      } else {
         console.warn(`No processed data found for sensor ${sensorId}`);
         return {
           sensorId,
@@ -247,9 +261,8 @@ async function processMultipleSensors(sensorIds, targetHour, hourStart, hourEnd)
         };
       }
 
-      // Fetch meteorological data for this sensor (with fallback to closest data)
+      // Fetch meteorological data for this sensor
       const meteoData = await fetchMeteoData(sensorId, targetHour);
-      
       if (!meteoData) {
         console.warn(`No meteorological data found for sensor ${sensorId}`);
         return {
@@ -259,11 +272,12 @@ async function processMultipleSensors(sensorIds, targetHour, hourStart, hourEnd)
         };
       }
 
+      const resultTimestamp = targetHour.format('YYYYMMDDTHHMM');
+
       // Process and aggregate the data
       const aggregatedData = processAndAggregate(processedData, meteoData, targetHour);
 
       // Store the result
-      const resultTimestamp = targetHour.format('YYYYMMDDTHHMM');
       await storeAggregatedData(sensorId, resultTimestamp, aggregatedData);
 
       return {
@@ -286,7 +300,7 @@ async function processMultipleSensors(sensorIds, targetHour, hourStart, hourEnd)
 
   // Wait for all sensors to be processed
   const allResults = await Promise.allSettled(promises);
-  
+
   allResults.forEach((result, index) => {
     if (result.status === 'fulfilled') {
       results.push(result.value);
@@ -299,7 +313,11 @@ async function processMultipleSensors(sensorIds, targetHour, hourStart, hourEnd)
     }
   });
 
-  return { results: [...results, ...errors] };
+  return { 
+    results: [...results, ...errors],
+    hourStart: processingHourStart,
+    hourEnd: processingHourEnd
+  };
 }
 
 /**
@@ -335,14 +353,8 @@ export const handler = async (event, context) => {
       return createErrorResponse(400, 'Missing required parameter: sensorIds (array of sensor IDs)');
     }
 
-    // Generate current hour timestamp automatically
-    const { targetHour, hourStart, hourEnd, timestampStr } = generateCurrentHourTimestamp();
-    
-    console.log(`Auto-generated timestamp: ${timestampStr}`);
-    console.log(`Processing ${Array.isArray(sensorIds) ? sensorIds.length : 1} sensor(s) from ${hourStart.format()} to ${hourEnd.format()}`);
-
     // Process multiple sensors
-    const { results } = await processMultipleSensors(sensorIds, targetHour, hourStart, hourEnd);
+    const { results, hourStart, hourEnd } = await processMultipleSensors(sensorIds);
 
     // Analyze results
     const successful = results.filter(r => r.status === 'success');
@@ -360,8 +372,8 @@ export const handler = async (event, context) => {
         skipped: skipped.length,
         failed: failed.length
       },
-      timestamp: timestampStr,
-      hourRange: `${hourStart.format()} - ${hourEnd.format()}`,
+      timestamp: results.find(r => r.timestamp)?.timestamp || null,
+      hourRange: hourStart && hourEnd ? `${hourStart.format()} - ${hourEnd.format()}` : 'N/A',
       generatedAt: new Date().toISOString(),
       results: results
     });
