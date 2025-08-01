@@ -1,6 +1,10 @@
 import admin from 'firebase-admin';
 import { DateTime } from 'luxon';
-import { ppmToMicrogramPerCubicMeter, ppbToMicrogramPerCubicMeter } from './utils.mjs';
+import {
+  ppmToMicrogramPerCubicMeter,
+  ppbToMicrogramPerCubicMeter,
+  calculateISPU
+} from './utils.mjs';
 import serviceAccount from './firebase-service-account.json' assert { type: 'json' };
 
 // Firebase Admin Initialization
@@ -44,7 +48,28 @@ export async function handler(event) {
     const timestamp = dt.toJSDate();
     const docId = formatTimestampKey(timestamp);
 
-    // Simpan ke Firestore
+    const components = {
+      pm2_5: round5(payload.pm2_5),
+      pm10: round5(payload.pm10),
+      o3: round5(ppbToMicrogramPerCubicMeter(payload.o3, 'o3')),
+      co: round5(ppmToMicrogramPerCubicMeter(payload.co, 'co')),
+      no2: round5(ppmToMicrogramPerCubicMeter(payload.no2, 'no2')),
+      nh3: round5(ppmToMicrogramPerCubicMeter(payload.nh3, 'nh3'))
+    };
+
+    const ispuValues = [
+      { pollutant: 'pm2_5', value: calculateISPU('pm2_5', components.pm2_5) },
+      { pollutant: 'pm10', value: calculateISPU('pm10', components.pm10) },
+      { pollutant: 'o3', value: calculateISPU('o3', components.o3) },
+      { pollutant: 'co', value: calculateISPU('co', components.co) },
+      { pollutant: 'no2', value: calculateISPU('no2', components.no2) }
+    ].filter(entry => entry.value !== null);
+
+    const { pollutant: dominant_pollutant, value: aqi } = ispuValues.reduce(
+      (max, curr) => (curr.value > max.value ? curr : max),
+      ispuValues[0]
+    );
+
     const ref = db
       .collection('processed_data')
       .doc(payload.id)
@@ -53,18 +78,13 @@ export async function handler(event) {
 
     await ref.set({
       id: payload.id,
-      location: { 
+      location: {
         name: payload.name || null
       },
       timestamp,
-      components: {
-        pm2_5: round5(payload.pm2_5),
-        pm10: round5(payload.pm10),
-        o3: round5(ppbToMicrogramPerCubicMeter(payload.o3, 'o3')),
-        co: round5(ppmToMicrogramPerCubicMeter(payload.co, 'co')),
-        no2: round5(ppmToMicrogramPerCubicMeter(payload.no2, 'no2')),
-        nh3: round5(ppmToMicrogramPerCubicMeter(payload.nh3, 'nh3'))
-      },
+      components,
+      aqi,
+      dominant_pollutant,
       created_at: admin.firestore.FieldValue.serverTimestamp()
     });
 
