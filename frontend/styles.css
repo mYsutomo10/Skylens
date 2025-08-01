@@ -833,42 +833,6 @@ h1 {
     margin-bottom: 0;
 }
 
-/* Perbaiki tampilan pada perangkat mobile */
-@media (max-width: 768px) {
-    .modal-content {
-        margin: 2% auto;
-        padding: var(--spacing-md);
-        max-height: 90vh;
-    }
-    
-    .modal-body {
-        gap: var(--spacing-md);
-    }
-    
-    .param-value-large {
-        font-size: 3rem;
-    }
-}
-
-/* Styling untuk scrollbar */
-.modal-content::-webkit-scrollbar {
-    width: 8px;
-}
-
-.modal-content::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.05);
-    border-radius: 10px;
-}
-
-.modal-content::-webkit-scrollbar-thumb {
-    background: var(--primary-color);
-    border-radius: 10px;
-}
-
-.modal-content::-webkit-scrollbar-thumb:hover {
-    background: var(--primary-dark);
-}
-
 /* Time Range Selector */
 .time-range-selector {
     display: flex;
@@ -909,6 +873,24 @@ h1 {
     grid-template-columns: 1fr 1fr;
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-lg);
+}
+
+/* Card lebar penuh - BARU */
+.full-width {
+    grid-column: span 2;
+}
+
+/* Mini Tabs untuk Histori Per 5 Menit - BARU */
+.mini-tabs {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: var(--spacing-md);
+}
+
+.mini-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.8rem;
 }
 
 /* Chart Cards - FIXED */
@@ -1201,6 +1183,10 @@ footer::before {
     .map-card {
         grid-column: span 1;
     }
+    
+    .full-width {
+        grid-column: span 1; /* Pada layar kecil, kembali ke lebar normal */
+    }
 
     .modal-body {
         grid-template-columns: 1fr;
@@ -1312,6 +1298,20 @@ footer::before {
     
     .stat-value {
         font-size: 1rem;
+    }
+    
+    .modal-content {
+        margin: 2% auto;
+        padding: var(--spacing-md);
+        max-height: 90vh;
+    }
+    
+    .modal-body {
+        gap: var(--spacing-md);
+    }
+    
+    .param-value-large {
+        font-size: 3rem;
     }
 }
 

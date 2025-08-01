@@ -74,88 +74,87 @@
                         </div>
                     </div>
 
-                    <!-- Education Card -->
-                    <div class="card education-card">
-                        <h3><i class="fas fa-book-open"></i> Edukasi Polutan</h3>
-                        <div class="pollutant-tabs">
-                            <button class="pollutant-tab active" data-pollutant="pm25">PM2.5</button>
-                            <button class="pollutant-tab" data-pollutant="pm10">PM10</button>
-                            <button class="pollutant-tab" data-pollutant="co">CO</button>
-                            <button class="pollutant-tab" data-pollutant="o3">O₃</button>
-                            <button class="pollutant-tab" data-pollutant="no2">NO₂</button>
-                            <button class="pollutant-tab" data-pollutant="nh3">NH₃</button>
+                        <!-- Perbarui Education Card di home-page -->
+                        <div class="card education-card">
+                            <h3><i class="fas fa-book-open"></i> Edukasi Polutan</h3>
+                            <div class="pollutant-tabs">
+                                <button class="pollutant-tab active" data-pollutant="pm25">PM2.5</button>
+                                <button class="pollutant-tab" data-pollutant="pm10">PM10</button>
+                                <button class="pollutant-tab" data-pollutant="co">CO</button>
+                                <button class="pollutant-tab" data-pollutant="o3">O₃</button>
+                                <button class="pollutant-tab" data-pollutant="no2">NO₂</button>
+                                <button class="pollutant-tab" data-pollutant="nh3">NH₃</button>
+                            </div>
+                            <div class="pollutant-content">
+                                <div class="pollutant-info active" id="pm25-info">
+                                    <h4>PM2.5 (Particulate Matter 2.5)</h4>
+                                    <div class="pollutant-icon"><i class="fas fa-smog"></i></div>
+                                    <p>Partikel halus dengan diameter 2.5 mikrometer atau kurang. Dapat menembus jauh ke dalam paru-paru dan aliran darah.</p>
+                                    <h5>Sumber:</h5>
+                                    <p>Pembakaran bahan bakar fosil, kebakaran hutan, debu jalan, industri, asap kendaraan bermotor.</p>
+                                    <h5>Dampak Kesehatan:</h5>
+                                    <p>Gangguan pernapasan, penyakit jantung, stroke, kanker paru-paru, dan dapat memperburuk asma.</p>
+                                    <h5>Batas Aman:</h5>
+                                    <p>Baik: 0-15.5 µg/m³ | Sedang: 15.6-55.4 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 55.5-150.4 µg/m³</p>
+                                </div>
+                                <div class="pollutant-info" id="pm10-info">
+                                    <h4>PM10 (Particulate Matter 10)</h4>
+                                    <div class="pollutant-icon"><i class="fas fa-wind"></i></div>
+                                    <p>Partikel dengan diameter 10 mikrometer atau kurang. Termasuk debu, serbuk sari, dan partikel organik.</p>
+                                    <h5>Sumber:</h5>
+                                    <p>Aktivitas konstruksi, jalan berdebu, pembakaran biomassa, proses industri, erosi tanah.</p>
+                                    <h5>Dampak Kesehatan:</h5>
+                                    <p>Iritasi mata dan tenggorokan, batuk, gangguan pernapasan, memperburuk asma dan bronkitis.</p>
+                                    <h5>Batas Aman:</h5>
+                                    <p>Baik: 0-50 µg/m³ | Sedang: 51-150 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 151-250 µg/m³</p>
+                                </div>
+                                <div class="pollutant-info" id="co-info">
+                                    <h4>CO (Carbon Monoxide)</h4>
+                                    <div class="pollutant-icon"><i class="fas fa-thermometer-half"></i></div>
+                                    <p>Gas tidak berwarna, tidak berbau yang dihasilkan dari pembakaran tidak sempurna bahan bakar.</p>
+                                    <h5>Sumber:</h5>
+                                    <p>Kendaraan bermotor, pembakaran kayu, alat pemanas, generator, kompor gas yang tidak terawat.</p>
+                                    <h5>Dampak Kesehatan:</h5>
+                                    <p>Mengurangi kemampuan darah membawa oksigen, sakit kepala, mual, kelelahan, dapat menyebabkan kematian.</p>
+                                    <h5>Batas Aman:</h5>
+                                    <p>Baik: 0-4.000 µg/m³ | Sedang: 4.001-8.000 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 8.001-15.000 µg/m³</p>
+                                </div>
+                                <div class="pollutant-info" id="o3-info">
+                                    <h4>O₃ (Ozone)</h4>
+                                    <div class="pollutant-icon"><i class="fas fa-cloud"></i></div>
+                                    <p>Gas yang terbentuk dari reaksi kimia antara nitrogen oksida (NOx) dan senyawa organik volatile (VOC) di bawah sinar matahari.</p>
+                                    <h5>Sumber:</h5>
+                                    <p>Emisi kendaraan, industri, cat, pelarut, pembangkit listrik yang bereaksi dengan sinar matahari.</p>
+                                    <h5>Dampak Kesehatan:</h5>
+                                    <p>Iritasi paru-paru, batuk, sesak napas, memperburuk asma, mengurangi fungsi paru-paru.</p>
+                                    <h5>Batas Aman:</h5>
+                                    <p>Baik: 0-120 µg/m³ | Sedang: 121-235 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 236-400 µg/m³</p>
+                                </div>
+                                <div class="pollutant-info" id="no2-info">
+                                    <h4>NO₂ (Nitrogen Dioxide)</h4>
+                                    <div class="pollutant-icon"><i class="fas fa-car"></i></div>
+                                    <p>Gas berwarna coklat kemerahan dengan bau menyengat yang dihasilkan dari pembakaran pada suhu tinggi.</p>
+                                    <h5>Sumber:</h5>
+                                    <p>Kendaraan bermotor, pembangkit listrik, proses industri, pembakaran bahan bakar fosil.</p>
+                                    <h5>Dampak Kesehatan:</h5>
+                                    <p>Iritasi saluran pernapasan, memperburuk asma, bronkitis, mengurangi resistensi terhadap infeksi paru.</p>
+                                    <h5>Batas Aman:</h5>
+                                    <p>Baik: 0-80 µg/m³ | Sedang: 81-200 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 201-400 µg/m³</p>
+                                </div>
+                                <div class="pollutant-info" id="nh3-info">
+                                    <h4>NH₃ (Ammonia)</h4>
+                                    <div class="pollutant-icon"><i class="fas fa-industry"></i></div>
+                                    <p>Gas tidak berwarna dengan bau menyengat yang kuat, mudah larut dalam air.</p>
+                                    <h5>Sumber:</h5>
+                                    <p>Pertanian (pupuk, kotoran ternak), proses industri, pembangkit listrik, kendaraan dengan sistem SCR.</p>
+                                    <h5>Dampak Kesehatan:</h5>
+                                    <p>Iritasi mata, hidung, dan tenggorokan, dapat menyebabkan luka bakar pada konsentrasi tinggi.</p>
+                                    <h5>Batas Aman:</h5>
+                                    <p>Baik: 0-696 µg/m³ | Sedang: 697-1.393 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 1.394-17.421 µg/m³</p>
+                                    </div>
+                                </div>
+                            </section>
                         </div>
-                        <div class="pollutant-content">
-                            <div class="pollutant-info active" id="pm25-info">
-                                <h4>PM2.5 (Particulate Matter 2.5)</h4>
-                                <div class="pollutant-icon"><i class="fas fa-smog"></i></div>
-                                <p>Partikel halus dengan diameter 2.5 mikrometer atau kurang. Dapat menembus jauh ke dalam paru-paru dan aliran darah.</p>
-                                <h5>Sumber:</h5>
-                                <p>Pembakaran bahan bakar fosil, kebakaran hutan, debu jalan, industri, asap kendaraan bermotor.</p>
-                                <h5>Dampak Kesehatan:</h5>
-                                <p>Gangguan pernapasan, penyakit jantung, stroke, kanker paru-paru, dan dapat memperburuk asma.</p>
-                                <h5>Batas Aman:</h5>
-                                <p>Baik: 0-15 µg/m³ | Sedang: 16-55 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 56-150 µg/m³</p>
-                            </div>
-                            <div class="pollutant-info" id="pm10-info">
-                                <h4>PM10 (Particulate Matter 10)</h4>
-                                <div class="pollutant-icon"><i class="fas fa-wind"></i></div>
-                                <p>Partikel dengan diameter 10 mikrometer atau kurang. Termasuk debu, serbuk sari, dan partikel organik.</p>
-                                <h5>Sumber:</h5>
-                                <p>Aktivitas konstruksi, jalan berdebu, pembakaran biomassa, proses industri, erosi tanah.</p>
-                                <h5>Dampak Kesehatan:</h5>
-                                <p>Iritasi mata dan tenggorokan, batuk, gangguan pernapasan, memperburuk asma dan bronkitis.</p>
-                                <h5>Batas Aman:</h5>
-                                <p>Baik: 0-50 µg/m³ | Sedang: 51-150 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 151-250 µg/m³</p>
-                            </div>
-                            <div class="pollutant-info" id="co-info">
-                                <h4>CO (Carbon Monoxide)</h4>
-                                <div class="pollutant-icon"><i class="fas fa-thermometer-half"></i></div>
-                                <p>Gas tidak berwarna, tidak berbau yang dihasilkan dari pembakaran tidak sempurna bahan bakar.</p>
-                                <h5>Sumber:</h5>
-                                <p>Kendaraan bermotor, pembakaran kayu, alat pemanas, generator, kompor gas yang tidak terawat.</p>
-                                <h5>Dampak Kesehatan:</h5>
-                                <p>Mengurangi kemampuan darah membawa oksigen, sakit kepala, mual, kelelahan, dapat menyebabkan kematian.</p>
-                                <h5>Batas Aman:</h5>
-                                <p>Baik: 0-5.000 µg/m³ | Sedang: 5.001-10.000 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 10.001-17.000 µg/m³</p>
-                            </div>
-                            <div class="pollutant-info" id="o3-info">
-                                <h4>O₃ (Ozone)</h4>
-                                <div class="pollutant-icon"><i class="fas fa-cloud"></i></div>
-                                <p>Gas yang terbentuk dari reaksi kimia antara nitrogen oksida (NOx) dan senyawa organik volatile (VOC) di bawah sinar matahari.</p>
-                                <h5>Sumber:</h5>
-                                <p>Emisi kendaraan, industri, cat, pelarut, pembangkit listrik yang bereaksi dengan sinar matahari.</p>
-                                <h5>Dampak Kesehatan:</h5>
-                                <p>Iritasi paru-paru, batuk, sesak napas, memperburuk asma, mengurangi fungsi paru-paru.</p>
-                                <h5>Batas Aman:</h5>
-                                <p>Baik: 0-100 µg/m³ | Sedang: 101-130 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 131-160 µg/m³</p>
-                            </div>
-                            <div class="pollutant-info" id="no2-info">
-                                <h4>NO₂ (Nitrogen Dioxide)</h4>
-                                <div class="pollutant-icon"><i class="fas fa-car"></i></div>
-                                <p>Gas berwarna coklat kemerahan dengan bau menyengat yang dihasilkan dari pembakaran pada suhu tinggi.</p>
-                                <h5>Sumber:</h5>
-                                <p>Kendaraan bermotor, pembangkit listrik, proses industri, pembakaran bahan bakar fosil.</p>
-                                <h5>Dampak Kesehatan:</h5>
-                                <p>Iritasi saluran pernapasan, memperburuk asma, bronkitis, mengurangi resistensi terhadap infeksi paru.</p>
-                                <h5>Batas Aman:</h5>
-                                <p>Baik: 0-40 µg/m³ | Sedang: 41-80 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 81-180 µg/m³</p>
-                            </div>
-                            <div class="pollutant-info" id="nh3-info">
-                                <h4>NH₃ (Ammonia)</h4>
-                                <div class="pollutant-icon"><i class="fas fa-industry"></i></div>
-                                <p>Gas tidak berwarna dengan bau menyengat yang kuat, mudah larut dalam air.</p>
-                                <h5>Sumber:</h5>
-                                <p>Pertanian (pupuk, kotoran ternak), proses industri, pembangkit listrik, kendaraan dengan sistem SCR.</p>
-                                <h5>Dampak Kesehatan:</h5>
-                                <p>Iritasi mata, hidung, dan tenggorokan, dapat menyebabkan luka bakar pada konsentrasi tinggi.</p>
-                                <h5>Batas Aman:</h5>
-                                <p>Baik: 0-100 µg/m³ | Sedang: 101-200 µg/m³ | Tidak Sehat untuk Kelompok Sensitif: 201-300 µg/m³</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
 
             <!-- Dashboard Page -->
             <div class="page" id="dashboard-page">
@@ -295,7 +294,25 @@
                             <canvas id="aqi-forecast-chart"></canvas>
                         </div>
                     </div>
-                    
+              <!-- Histori Per 5 Menit Chart - BARU -->
+<div class="card chart-card full-width">
+    <h3>Histori Per 5 Menit</h3>
+    
+    <!-- Selector Pollutant untuk Histori Per 5 Menit -->
+    <div class="pollutant-tabs mini-tabs">
+        <button class="pollutant-tab mini-tab active" data-param="aqi">AQI</button>
+        <button class="pollutant-tab mini-tab" data-param="pm25">PM2.5</button>
+        <button class="pollutant-tab mini-tab" data-param="pm10">PM10</button>
+        <button class="pollutant-tab mini-tab" data-param="co">CO</button>
+        <button class="pollutant-tab mini-tab" data-param="ozone">O₃</button>
+        <button class="pollutant-tab mini-tab" data-param="no2">NO₂</button>
+        <button class="pollutant-tab mini-tab" data-param="nh3">NH₃</button>
+    </div>
+    
+    <div class="chart-container">
+        <canvas id="per-5-min-chart"></canvas>
+    </div>
+</div>      
                     <!-- Map Card -->
                     <div class="card map-card">
                         <h3>Lokasi Perangkat Monitoring</h3>
