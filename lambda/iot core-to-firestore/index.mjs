@@ -1,6 +1,6 @@
 import admin from 'firebase-admin';
 import { DateTime } from 'luxon';
-import { ppmToMicrogramPerCubicMeter } from './utils.mjs';
+import { ppmToMicrogramPerCubicMeter, ppbToMicrogramPerCubicMeter } from './utils.mjs';
 import serviceAccount from './firebase-service-account.json' assert { type: 'json' };
 
 // Firebase Admin Initialization
