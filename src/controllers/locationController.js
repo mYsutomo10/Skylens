@@ -106,7 +106,7 @@ async function getHistoricalData(req, res, next) {
     if (!config.timeRanges[timeRange]) {
       return res.status(400).json({
         status: 'error',
-        message: `Invalid time range: ${timeRange}. Valid values are: 1d, 7d, 30d`
+        message: `Invalid time range: ${timeRange}. Valid values are: 5m, 1d, 7d, 30d`
       });
     }
     

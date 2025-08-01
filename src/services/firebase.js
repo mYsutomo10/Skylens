@@ -70,9 +70,42 @@ async function getCurrentData(sensorId) {
 async function getHistoricalData(sensorId, timeRange) {
   try {
     const db = getFirestore();
-
     const endTime = new Date();
     const startTime = new Date(endTime.getTime() - config.timeRanges[timeRange]);
+
+    if (timeRange === '5m') {
+      const collectionPath = `processed_data/${sensorId}/readings`;
+      const readingsRef = db.collection(collectionPath);
+      const snapshot = await readingsRef
+        .orderBy('timestamp', 'desc')
+        .where('timestamp', '>=', startTime)
+        .where('timestamp', '<=', endTime)
+        .limit(60)
+        .get();
+
+      if (snapshot.empty) return [];
+
+      const sortedDocs = snapshot.docs.sort(
+        (a, b) => a.data().timestamp.toDate() - b.data().timestamp.toDate()
+      );
+
+      const sampledDocs = [];
+      let lastTimestamp = null;
+      const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+      for (const doc of sortedDocs) {
+        const timestamp = doc.data().timestamp.toDate();
+
+        if (!lastTimestamp || (timestamp - lastTimestamp >= FIVE_MINUTES_MS)) {
+          sampledDocs.push(doc);
+          lastTimestamp = timestamp;
+        }
+
+        if (sampledDocs.length >= 12) break;
+      }
+
+      return sampledDocs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
 
     const readingsRef = db.collection(`current_data/${sensorId}/main`);
     const snapshot = await readingsRef
@@ -81,7 +114,9 @@ async function getHistoricalData(sensorId, timeRange) {
       .where('timestamp', '<=', endTime)
       .get();
 
-    return snapshot.empty ? [] : snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.empty
+      ? []
+      : snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error(`Error fetching historical data for sensor ${sensorId}:`, error);
     throw error;
