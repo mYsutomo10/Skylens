@@ -4,12 +4,12 @@ import os
 import boto3
 from datetime import datetime, timedelta
 
-# Variabel ENV
+# ENV Variables
 S3_BUCKET = os.environ.get("CONFIG_BUCKET", "configfs")
 S3_KEY = os.environ.get("FIREBASE_CRED_KEY", "firebase-service-account.json")
 LOCAL_CRED_PATH = "/tmp/firebase-service-account.json"
 
-# Inisialisasi Firestore
+# Firestore Initialization
 def init_firestore():
     if not os.path.exists(LOCAL_CRED_PATH):
         print(f"Downloading Firebase credentials from s3://{S3_BUCKET}/{S3_KEY}")
@@ -24,10 +24,9 @@ def init_firestore():
 
     return firestore.client()
 
-# Inisialisasi global
 db = init_firestore()
 
-# Cari dokumen Firestore dengan timestamp terdekat ke HH:00
+# This function finds the nearest document in Firestore
 def get_nearest_doc(sensor_id, target_time):
     collection = db.collection(f"current_data/{sensor_id}/main")
 
@@ -35,9 +34,8 @@ def get_nearest_doc(sensor_id, target_time):
     closest_diff = timedelta.max
     selected_ts_str = None
 
-    # Coba range ±30 menit (61 titik pencarian: -30 hingga +30)
-    for offset_min in range(-30, 31):
-        check_time = target_time + timedelta(minutes=offset_min)
+    for offset_hr in range(-3, 4): 
+        check_time = target_time + timedelta(hours=offset_hr)
         ts_str = check_time.strftime("%Y%m%dT%H%M")
         doc = collection.document(ts_str).get()
         if doc.exists:
@@ -51,7 +49,7 @@ def get_nearest_doc(sensor_id, target_time):
         return selected_ts_str, closest_doc
     return None, None
 
-# Ambil 72 jam data historis dengan toleransi waktu fleksibel ±30 menit
+# Retrieve 72 hours of historical data
 def fetch_sensor_data(sensor_id, reference_time, hours_back=77):
     raw_data = []
     current_time = reference_time
@@ -69,7 +67,7 @@ def fetch_sensor_data(sensor_id, reference_time, hours_back=77):
     print(f"[{sensor_id}] Retrieved {len(raw_data)} records from Firestore")
     return raw_data
 
-# Simpan hasil prediksi ke Firestore
+# Save forecast results to Firestore
 def save_forecast(sensor_id, timestamp, forecast_data, location_data):
     forecast_collection = db.collection(f"forecast_data/{sensor_id}/main")
 
