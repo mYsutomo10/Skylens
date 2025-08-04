@@ -1,41 +1,34 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
-import boto3
 from datetime import datetime, timedelta
 
-# ENV Variables
-S3_BUCKET = os.environ.get("CONFIG_BUCKET", "configfs")
-S3_KEY = os.environ.get("FIREBASE_CRED_KEY", "firebase-service-account.json")
-LOCAL_CRED_PATH = "/tmp/firebase-service-account.json"
-
-# Firestore Initialization
 def init_firestore():
-    if not os.path.exists(LOCAL_CRED_PATH):
-        print(f"Downloading Firebase credentials from s3://{S3_BUCKET}/{S3_KEY}")
-        s3 = boto3.client("s3")
-        s3.download_file(S3_BUCKET, S3_KEY, LOCAL_CRED_PATH)
-
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = LOCAL_CRED_PATH
-
     if not firebase_admin._apps:
-        cred = credentials.Certificate(LOCAL_CRED_PATH)
-        firebase_admin.initialize_app(cred)
-
+        if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
+            cred = credentials.Certificate(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+            firebase_admin.initialize_app(cred)
+        else:
+            firebase_admin.initialize_app()
     return firestore.client()
 
-db = init_firestore()
+db = None
+def get_db():
+    global db
+    if db is None:
+        db = init_firestore()
+    return db
 
-# This function finds the nearest document in Firestore
 def get_nearest_doc(sensor_id, target_time):
-    collection = db.collection(f"current_data/{sensor_id}/main")
+    db_client = get_db()
+    collection = db_client.collection(f"current_data/{sensor_id}/main")
 
     closest_doc = None
     closest_diff = timedelta.max
     selected_ts_str = None
 
-    for offset_hr in range(-3, 4): 
-        check_time = target_time + timedelta(hours=offset_hr)
+    for offset_min in range(-30, 31):
+        check_time = target_time + timedelta(minutes=offset_min)
         ts_str = check_time.strftime("%Y%m%dT%H%M")
         doc = collection.document(ts_str).get()
         if doc.exists:
@@ -49,27 +42,37 @@ def get_nearest_doc(sensor_id, target_time):
         return selected_ts_str, closest_doc
     return None, None
 
-# Retrieve 72 hours of historical data
-def fetch_sensor_data(sensor_id, reference_time, hours_back=77):
+def fetch_sensor_data(sensor_id, reference_time, hours_needed=77):
     raw_data = []
     current_time = reference_time
+    hours_checked = 0
 
-    for _ in range(hours_back):
+    while len(raw_data) < hours_needed and hours_checked < 100:
         target_time = current_time.replace(minute=0, second=0, microsecond=0)
         ts_str, doc_data = get_nearest_doc(sensor_id, target_time)
+
         if doc_data:
             doc_data["timestamp"] = ts_str
             raw_data.insert(0, doc_data)
         else:
-            print(f"[{sensor_id}] No data found near {target_time.strftime('%Y-%m-%d %H:%M')}")
+            print(f"[{sensor_id}] No data found near {target_time.strftime('%Y-%m-%d %H:%M')}. Searching further back.")
+        
         current_time -= timedelta(hours=1)
+        hours_checked += 1
+    
+    if len(raw_data) > hours_needed:
+        raw_data = raw_data[-hours_needed:]
 
     print(f"[{sensor_id}] Retrieved {len(raw_data)} records from Firestore")
+    
+    if len(raw_data) < hours_needed:
+        print(f"[{sensor_id}] WARNING: Only found {len(raw_data)} out of {hours_needed} required data points. Prediction may fail or be inaccurate.")
+
     return raw_data
 
-# Save forecast results to Firestore
 def save_forecast(sensor_id, timestamp, forecast_data, location_data):
-    forecast_collection = db.collection(f"forecast_data/{sensor_id}/main")
+    db_client = get_db()
+    forecast_collection = db_client.collection(f"forecast_data/{sensor_id}/main")
 
     for i, forecast in enumerate(forecast_data):
         forecast_ts = timestamp + timedelta(hours=i+1)

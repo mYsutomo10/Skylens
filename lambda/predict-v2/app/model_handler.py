@@ -1,4 +1,3 @@
-import boto3
 import os
 import shutil
 import joblib
@@ -7,39 +6,41 @@ import pandas as pd
 import tensorflow as tf
 from keras.layers import TFSMLayer
 from datetime import datetime
+from google.cloud import storage
 
-S3_BUCKET = "lstm-model-skylens"
-s3 = boto3.client("s3")
+# Variabel ENV
+GCS_BUCKET = os.environ.get("MODEL_BUCKET", "lstm-model-skylens")
 
-def download_model_from_s3(sensor_id):
+def download_model_from_gcs(sensor_id):
+    client = storage.Client()
+    bucket = client.bucket(GCS_BUCKET)
     prefix = f"{sensor_id}/"
     local_dir = f"/tmp/{sensor_id}/"
 
-    # Clean existing local directory
     if os.path.exists(local_dir):
         shutil.rmtree(local_dir)
     os.makedirs(local_dir, exist_ok=True)
 
-    # Download model files from S3
-    response = s3.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
-    if "Contents" not in response:
-        raise FileNotFoundError(f"No model found in S3 for {sensor_id}")
-
-    for obj in response["Contents"]:
-        key = obj["Key"]
-        if key.endswith("/"):
-            continue  # Skip folders
-        rel_path = key[len(prefix):]
+    blobs = bucket.list_blobs(prefix=prefix)
+    downloaded = False
+    for blob in blobs:
+        if blob.name.endswith("/"):
+            continue
+        rel_path = blob.name[len(prefix):]
         local_path = os.path.join(local_dir, rel_path)
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
-        print(f"Downloading {key} to {local_path}")
-        s3.download_file(S3_BUCKET, key, local_path)
+        print(f"Downloading {blob.name} to {local_path}")
+        blob.download_to_filename(local_path)
+        downloaded = True
+
+    if not downloaded:
+        raise FileNotFoundError(f"No model found in GCS for {sensor_id}")
 
     return local_dir
 
 def load_model(sensor_id):
-    model_path = download_model_from_s3(sensor_id)
+    model_path = download_model_from_gcs(sensor_id)
     tfsmlayer = TFSMLayer(model_path, call_endpoint="serving_default")
     return tf.keras.Sequential([tfsmlayer])
 
@@ -110,7 +111,7 @@ def predict(sensor_id, raw_data):
     if len(df) < 72:
         raise ValueError(f"Sensor {sensor_id} has insufficient data: got {len(df)}.")
 
-    download_model_from_s3(sensor_id)
+    download_model_from_gcs(sensor_id)
 
     model = load_model(sensor_id)
     scaler_x, scaler_y = load_scalers(sensor_id)
