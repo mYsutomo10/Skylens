@@ -4,14 +4,11 @@ from datetime import datetime
 import os
 from flask import Flask, request, jsonify
 
-# Impor dari file-file handler
 from model_handler import predict
 from firestore_handler import fetch_sensor_data, save_forecast, init_firestore
 
-# Inisialisasi aplikasi Flask
 app = Flask(__name__)
 
-# Fungsi untuk memuat kredensial Firestore
 def load_firestore_credentials():
     try:
         init_firestore()
@@ -19,11 +16,9 @@ def load_firestore_credentials():
         print(f"Failed to initialize Firestore: {e}")
         pass
 
-# Panggil saat aplikasi startup
 with app.app_context():
     load_firestore_credentials()
 
-# Logika handler utama (mirip dengan main.py)
 def process_sensor(sensor_id, timestamp_str):
     print(f"Processing {sensor_id} for {timestamp_str}")
     try:
@@ -65,7 +60,6 @@ def handler_logic(event):
         "body": json.dumps(results)
     }
 
-# Endpoint Flask
 @app.route("/", methods=["POST"])
 def run_handler():
     try:

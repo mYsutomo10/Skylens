@@ -1,32 +1,42 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 import os
+import json
+import google.cloud.storage as storage
 from datetime import datetime, timedelta
 
 def init_firestore():
-    if not firebase_admin._apps:
-        if "GOOGLE_APPLICATION_CREDENTIALS" in os.environ:
-            cred = credentials.Certificate(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
-            firebase_admin.initialize_app(cred)
-        else:
-            firebase_admin.initialize_app()
+    cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+
+    if not cred_path:
+        raise ValueError("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.")
+
+    try:
+        cred_json = json.loads(cred_path)
+        cred = credentials.Certificate(cred_json)
+    except json.JSONDecodeError:
+        cred = credentials.Certificate(cred_path)
+
+    firebase_admin.initialize_app(cred)
+    print(f"Firestore initialized.")
+    
     return firestore.client()
 
-db = None
-def get_db():
-    global db
-    if db is None:
-        db = init_firestore()
-    return db
+try:
+    db = init_firestore()
+except ValueError as e:
+    print(f"Error initializing Firestore: {e}")
+    db = None
 
+# Find the Firestore document with the timestamp closest to HH:00
 def get_nearest_doc(sensor_id, target_time):
-    db_client = get_db()
-    collection = db_client.collection(f"current_data/{sensor_id}/main")
+    collection = db.collection(f"current_data/{sensor_id}/main")
 
     closest_doc = None
     closest_diff = timedelta.max
     selected_ts_str = None
 
+    # Try a range of ±30 minutes (61 search points: -30 to +30)
     for offset_min in range(-30, 31):
         check_time = target_time + timedelta(minutes=offset_min)
         ts_str = check_time.strftime("%Y%m%dT%H%M")
@@ -42,37 +52,27 @@ def get_nearest_doc(sensor_id, target_time):
         return selected_ts_str, closest_doc
     return None, None
 
-def fetch_sensor_data(sensor_id, reference_time, hours_needed=77):
+# Fetch 72 hours of historical data with a flexible time tolerance of ±30 minutes
+def fetch_sensor_data(sensor_id, reference_time, hours_back=77):
     raw_data = []
     current_time = reference_time
-    hours_checked = 0
 
-    while len(raw_data) < hours_needed and hours_checked < 100:
+    for _ in range(hours_back):
         target_time = current_time.replace(minute=0, second=0, microsecond=0)
         ts_str, doc_data = get_nearest_doc(sensor_id, target_time)
-
         if doc_data:
             doc_data["timestamp"] = ts_str
             raw_data.insert(0, doc_data)
         else:
-            print(f"[{sensor_id}] No data found near {target_time.strftime('%Y-%m-%d %H:%M')}. Searching further back.")
-        
+            print(f"[{sensor_id}] No data found near {target_time.strftime('%Y-%m-%d %H:%M')}")
         current_time -= timedelta(hours=1)
-        hours_checked += 1
-    
-    if len(raw_data) > hours_needed:
-        raw_data = raw_data[-hours_needed:]
 
     print(f"[{sensor_id}] Retrieved {len(raw_data)} records from Firestore")
-    
-    if len(raw_data) < hours_needed:
-        print(f"[{sensor_id}] WARNING: Only found {len(raw_data)} out of {hours_needed} required data points. Prediction may fail or be inaccurate.")
-
     return raw_data
 
+# Save the forecast results to Firestore
 def save_forecast(sensor_id, timestamp, forecast_data, location_data):
-    db_client = get_db()
-    forecast_collection = db_client.collection(f"forecast_data/{sensor_id}/main")
+    forecast_collection = db.collection(f"forecast_data/{sensor_id}/main")
 
     for i, forecast in enumerate(forecast_data):
         forecast_ts = timestamp + timedelta(hours=i+1)

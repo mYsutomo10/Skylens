@@ -1,17 +1,18 @@
+import tensorflow as tf
+from sklearn.preprocessing import MinMaxScaler
+import joblib
+import pandas as pd
+import numpy as np
 import os
 import shutil
-import joblib
-import numpy as np
-import pandas as pd
-import tensorflow as tf
-from keras.layers import TFSMLayer
-from datetime import datetime
-from google.cloud import storage
+import google.cloud.storage as storage
 
-# Variabel ENV
 GCS_BUCKET = os.environ.get("MODEL_BUCKET", "lstm-model-skylens")
 
 def download_model_from_gcs(sensor_id):
+    """
+    Downloads the model and scalers from GCS to a temporary directory.
+    """
     client = storage.Client()
     bucket = client.bucket(GCS_BUCKET)
     prefix = f"{sensor_id}/"
@@ -39,21 +40,34 @@ def download_model_from_gcs(sensor_id):
 
     return local_dir
 
-def load_model(sensor_id):
-    model_path = download_model_from_gcs(sensor_id)
-    tfsmlayer = TFSMLayer(model_path, call_endpoint="serving_default")
-    return tf.keras.Sequential([tfsmlayer])
+def load_model_and_scalers(sensor_id):
+    """
+    Downloads the model and scalers from GCS and loads them.
+    """
+    base_path = download_model_from_gcs(sensor_id)
+    
+    model_path = os.path.join(base_path, "model")
+    try:
+        model = tf.saved_model.load(model_path)
+    except Exception as e:
+        raise RuntimeError(f"Error loading model for {sensor_id}: {e}")
 
-def load_scalers(sensor_id):
-    base_path = f"/tmp/{sensor_id}/"
-    scaler_x = joblib.load(os.path.join(base_path, "scaler_x.pkl"))
-    scaler_y = joblib.load(os.path.join(base_path, "scaler_y.pkl"))
-    return scaler_x, scaler_y
+    try:
+        scaler_x = joblib.load(os.path.join(base_path, "scaler_x.pkl"))
+        scaler_y = joblib.load(os.path.join(base_path, "scaler_y.pkl"))
+    except Exception as e:
+        raise RuntimeError(f"Error loading scalers for {sensor_id}: {e}")
+        
+    return model, scaler_x, scaler_y
 
 def normalize_firestore_data(raw_data):
     rows = []
 
     for doc in raw_data:
+        if doc is None:
+            print("Skipping a None record in raw_data.")
+            continue
+            
         try:
             row = {
                 "dt": datetime.strptime(doc["timestamp"], "%Y%m%dT%H%M"),
@@ -111,13 +125,10 @@ def predict(sensor_id, raw_data):
     if len(df) < 72:
         raise ValueError(f"Sensor {sensor_id} has insufficient data: got {len(df)}.")
 
-    download_model_from_gcs(sensor_id)
-
-    model = load_model(sensor_id)
-    scaler_x, scaler_y = load_scalers(sensor_id)
+    model, scaler_x, scaler_y = load_model_and_scalers(sensor_id)
     X_input = prepare_input(df, scaler_x)
 
-    raw_output = model(X_input, training=False)
+    raw_output = model.signatures["serving_default"](tf.constant(X_input, dtype=tf.float32))
 
     y_pred_scaled = list(raw_output.values())[0].numpy()
     y_pred = scaler_y.inverse_transform(y_pred_scaled)
