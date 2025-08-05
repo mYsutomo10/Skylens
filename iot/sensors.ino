@@ -44,12 +44,12 @@ float lastPM10 = 0;
 // MQ-131 Ozone sensor constants (based on Winsen datasheet)
 #define MQ131_CLEAN_AIR_FACTOR 2000.0f  // RS/R0 ratio in clean air
 #define MQ131_RL_VALUE 10.0f          // Load resistance in kOhm (typical 10kΩ)
-#define MQ131_VCC 3.3f                // Supply voltage 3.3V
+#define MQ131_VCC 5.0f                // Supply voltage 5V
 #define MQ131_CURVE_A 23.943f         // Curve fitting parameter A
 #define MQ131_CURVE_B -1.11f          // Curve fitting parameter B
 
 // MICS-6814 sensor constants (based on SGX datasheet)
-#define MICS6814_VCC 5.0f             // Supply voltage 3.3V
+#define MICS6814_VCC 5.0f             // Supply voltage 5V
 #define MICS6814_RL_VALUE 10.0f        // Load resistance in kOhm
 // CO channel constants (RED sensor)
 #define MICS6814_CO_CLEAN_AIR_FACTOR 7.0f
@@ -69,11 +69,11 @@ float lastPM10 = 0;
 #define DSM501A_K_VALUE 0.023f        // Conversion factor from datasheet
 #define DSM501A_SAMPLE_TIME 30000     // 30 seconds sampling time
 
-const char* ssid = "iPhone daffa";
-const char* password = "Rfn110703";
-const char* apiKey = "JY4E1XXHEU5YMJHB";
+const char* ssid = "LTE";
+const char* password = "4gsimpati1";
+const char* apiKey = "5DW1MDM2IAH27VB6";
 const char* server = "http://api.thingspeak.com/update";
-String thingSpeakApiKey = "JY4E1XXHEU5YMJHB";
+String thingSpeakApiKey = "5DW1MDM2IAH27VB6";
 
 // AWS IoT settings
 const char* awsEndpoint = "a1wxe0mbsyoav9-ats.iot.ap-southeast-1.amazonaws.com";
@@ -161,7 +161,7 @@ WiFiClientSecure wifiClient;
 PubSubClient mqttClient(wifiClient);
 
 // Pin definitions
-const int MQ131_ANALOG_PIN = 33;      // MQ-131 Ozone sensor (3.3V)
+const int MQ131_ANALOG_PIN = 33;      // MQ-131 Ozone sensor (5V)
 const int MICS6814_CO_PIN = 34;       // MICS-6814 CO channel (5V)
 const int MICS6814_NO2_PIN = 35;      // MICS-6814 NO2 channel (5V)
 const int MICS6814_NH3_PIN = 32;      // MICS-6814 NH3 channel (5V)
@@ -691,7 +691,7 @@ void messageCallback(char* topic, byte* payload, unsigned int length) {
 void publishSensorData(float ozone_ppm, float ppmCO, float ppbNO2, float ppmNH3, float pm10, float pm25, float lat, float lng) {
   // Create JSON document
   JsonDocument doc;
-  doc["id"] = "sensor002";
+  doc["id"] = "sensor001";
   doc["name"] = "Telkom";
   doc["o3"] = ozone_ppm;
   doc["co"] = ppmCO;
@@ -830,11 +830,10 @@ void IRAM_ATTR dsm501a_pm10_interrupt() {
 }
 
 float calculatePM(unsigned long duration, unsigned long sampleTime) {
-  float ratio = (float)duration / (sampleTime * 1000.0); // Convert to seconds
-  float concentration = 1.1 * pow(ratio, 3) - 3.8 * pow(ratio, 2) + 520 * ratio + 0.62;
-  
+  float ratio = (float)duration * 100.0 / (sampleTime * 1000.0); // Convert to seconds
+  float concentration = 0.001915 * ratio - 0.03557;
   // Apply calibration factor
-  concentration = concentration * DSM501A_K_VALUE;
+  concentration = concentration * 0.5;
   
   // Ensure non-negative values
   if (concentration < 0) concentration = 0;

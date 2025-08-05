@@ -1,12 +1,12 @@
 tensorflow
-numpy
+numpy>=1.22
 pandas
 boto3
 firebase-admin==6.4.0
 google-cloud-firestore
 google-cloud-storage
 pytz
-protobuf==3.20.*
+protobuf==5.26.1
 joblib==1.3.2
 scikit-learn==1.3.2
 flask

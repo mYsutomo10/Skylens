@@ -1,161 +1,271 @@
-/**
- * Process weather data from OpenWeather API
- * Converts to required format: temp, rhum, log_prcp, wdir_sin, wdir_cos, wspd
- * @param {Object} weatherData - Raw weather data from OpenWeather API
- * @returns {Object} Processed weather data
- */
-export function processWeatherData(weatherData) {
-  const result = {
-    temp: 0,
-    rhum: 0,
-    log_prcp: 0,
-    wdir_sin: 0,
-    wdir_cos: 0,
-    wspd: 0
+//utils.mjs
+import moment from 'moment-timezone';
+
+export function parseTimestamp(timestampStr) {
+  try {
+    if (!/^\d{8}T\d{4}$/.test(timestampStr)) {
+      throw new Error(`Invalid timestamp format: ${timestampStr}. Expected format: YYYYMMDDTHHMM`);
+    }
+
+    const year = parseInt(timestampStr.substring(0, 4));
+    const month = parseInt(timestampStr.substring(4, 6)) - 1;
+    const day = parseInt(timestampStr.substring(6, 8));
+    const hour = parseInt(timestampStr.substring(9, 11));
+    const minute = parseInt(timestampStr.substring(11, 13));
+
+    const dt = moment.tz([year, month, day, hour, minute], "Asia/Jakarta");
+
+    if (!dt.isValid()) {
+      throw new Error(`Invalid timestamp values: ${timestampStr}`);
+    }
+
+    return dt;
+  } catch (error) {
+    throw new Error(`Invalid timestamp format: ${timestampStr}. Expected format: YYYYMMDDTHHMM`);
+  }
+}
+
+export function generateCurrentHourTimestamp() {
+  const now = moment.tz("Asia/Jakarta");
+  const targetHour = now.clone().startOf('hour');
+  const { hourStart, hourEnd } = getHourRange(targetHour);
+  const timestampStr = targetHour.format('YYYYMMDDTHHMM');
+
+  return {
+    targetHour,
+    hourStart,
+    hourEnd,
+    timestampStr
+  };
+}
+
+export function getHourRange(targetHour) {
+  const hourStart = targetHour.clone().startOf('hour');
+  const hourEnd = targetHour.clone().endOf('hour');
+  return { hourStart, hourEnd };
+}
+
+export function removeOutliers(values, method = 'iqr') {
+  if (values.length < 4) return values;
+  if (method === 'iqr') {
+    const sorted = [...values].sort((a, b) => a - b);
+    const n = sorted.length;
+    const q1 = sorted[Math.floor(n * 0.25)];
+    const q3 = sorted[Math.floor(n * 0.75)];
+    const iqr = q3 - q1;
+    const lower = q1 - 1.5 * iqr;
+    const upper = q3 + 1.5 * iqr;
+    return values.filter(v => v >= lower && v <= upper);
+  }
+  return values;
+}
+
+export function calculateAverages(processedData) {
+  console.log('calculateAverages - Input data:', JSON.stringify(processedData, null, 2));
+  
+  // Inisialisasi array untuk setiap komponen
+  const components = {
+    pm2_5: [],
+    pm10: [],
+    co: [],
+    nh3: [],
+    o3: [],
+    no2: []
   };
 
-  // Temperature (already in Celsius from API with units=metric)
-  if (weatherData.main && weatherData.main.temp !== undefined) {
-    result.temp = parseFloat(weatherData.main.temp.toFixed(2));
+  // Ekstrak nilai dari processedData dan masukkan ke dalam array
+  processedData.forEach((data, index) => {
+    console.log(`Processing data record ${index}:`, JSON.stringify(data, null, 2));
+    
+    // Cek berbagai kemungkinan struktur data
+    if (data.components) {
+      // Struktur: { components: { pm2_5: value, pm10: value, ... } }
+      console.log('Found components object:', JSON.stringify(data.components, null, 2));
+      Object.keys(components).forEach(key => {
+        const value = data.components[key];
+        if (value !== null && value !== undefined && typeof value === 'number') {
+          components[key].push(value);
+          console.log(`Added ${key}: ${value}`);
+        }
+      });
+    } else if (data.main) {
+      // Struktur: { main: { pm2_5: value, pm10: value, ... } }
+      console.log('Found main object:', JSON.stringify(data.main, null, 2));
+      Object.keys(components).forEach(key => {
+        const value = data.main[key];
+        if (value !== null && value !== undefined && typeof value === 'number') {
+          components[key].push(value);
+          console.log(`Added ${key}: ${value}`);
+        }
+      });
+    } else {
+      // Struktur langsung: { pm2_5: value, pm10: value, ... }
+      console.log('Using direct structure');
+      Object.keys(components).forEach(key => {
+        const value = data[key];
+        if (value !== null && value !== undefined && typeof value === 'number') {
+          components[key].push(value);
+          console.log(`Added ${key}: ${value}`);
+        }
+      });
+    }
+  });
+
+  console.log('Components arrays after processing:', JSON.stringify(components, null, 2));
+
+  // Hitung rata-rata untuk setiap komponen
+  const averages = {};
+  for (const [key, values] of Object.entries(components)) {
+    console.log(`Processing component ${key} with ${values.length} values:`, values);
+    
+    if (values.length > 0) {
+      // Hapus outliers jika ada cukup data
+      const clean = removeOutliers(values);
+      const used = clean.length > 0 ? clean : values;
+      
+      const sum = used.reduce((sum, v) => sum + v, 0);
+      const average = sum / used.length;
+      averages[key] = Math.round(average * 10) / 10;
+      
+      console.log(`${key}: ${values.length} values -> ${clean.length} after outlier removal -> average: ${averages[key]}`);
+    } else {
+      averages[key] = null;
+      console.log(`${key}: No values found, setting to null`);
+    }
   }
 
-  // Relative Humidity (percentage)
-  if (weatherData.main && weatherData.main.humidity !== undefined) {
-    result.rhum = parseFloat(weatherData.main.humidity.toFixed(2));
-  }
+  console.log('Final averages:', JSON.stringify(averages, null, 2));
+  return averages;
+}
 
-  // Precipitation (log transform)
-  let precipitation = 0;
+const ISPU_BREAKPOINTS = {
+  pm10: [
+    { cLow: 0, cHigh: 50, iLow: 0, iHigh: 50 },
+    { cLow: 51, cHigh: 150, iLow: 51, iHigh: 100 },
+    { cLow: 151, cHigh: 350, iLow: 101, iHigh: 200 },
+    { cLow: 351, cHigh: 420, iLow: 201, iHigh: 300 },
+    { cLow: 421, cHigh: 500, iLow: 301, iHigh: 500 }
+  ],
+  pm2_5: [
+    { cLow: 0, cHigh: 15.5, iLow: 0, iHigh: 50 },
+    { cLow: 15.6, cHigh: 55.4, iLow: 51, iHigh: 100 },
+    { cLow: 55.5, cHigh: 150.4, iLow: 101, iHigh: 200 },
+    { cLow: 150.5, cHigh: 250.4, iLow: 201, iHigh: 300 },
+    { cLow: 250.5, cHigh: 500, iLow: 301, iHigh: 500 }
+  ],
+  co: [
+    { cLow: 0, cHigh: 4000, iLow: 0, iHigh: 50 },
+    { cLow: 4001, cHigh: 8000, iLow: 51, iHigh: 100 },
+    { cLow: 8001, cHigh: 15000, iLow: 101, iHigh: 200 },
+    { cLow: 15001, cHigh: 30000, iLow: 201, iHigh: 300 },
+    { cLow: 30001, cHigh: 45000, iLow: 301, iHigh: 500 }
+  ],
+  o3: [
+    { cLow: 0, cHigh: 120, iLow: 0, iHigh: 50 },
+    { cLow: 121, cHigh: 235, iLow: 51, iHigh: 100 },
+    { cLow: 236, cHigh: 400, iLow: 101, iHigh: 200 },
+    { cLow: 401, cHigh: 800, iLow: 201, iHigh: 300 },
+    { cLow: 801, cHigh: 1000, iLow: 301, iHigh: 500 }
+  ],
+  no2: [
+    { cLow: 0, cHigh: 80, iLow: 0, iHigh: 50 },
+    { cLow: 81, cHigh: 200, iLow: 51, iHigh: 100 },
+    { cLow: 201, cHigh: 1130, iLow: 101, iHigh: 200 },
+    { cLow: 1131, cHigh: 2260, iLow: 201, iHigh: 300 },
+    { cLow: 2261, cHigh: 3000, iLow: 301, iHigh: 500 }
+  ]
+};
+
+export function calculateISPU(component, concentration) {
+  console.log(`Calculating ISPU for ${component} with concentration: ${concentration}`);
   
-  // Check for rain data
-  if (weatherData.rain) {
-    if (weatherData.rain['1h']) {
-      precipitation += weatherData.rain['1h'];
-    } else if (weatherData.rain['3h']) {
-      precipitation += weatherData.rain['3h'] / 3; // Convert 3h to 1h average
+  const breakpoints = ISPU_BREAKPOINTS[component];
+  if (!breakpoints || concentration == null) {
+    console.log(`No breakpoints found for ${component} or concentration is null`);
+    return null;
+  }
+
+  for (const bp of breakpoints) {
+    if (concentration >= bp.cLow && concentration <= bp.cHigh) {
+      const ispu = Math.round(
+        ((bp.iHigh - bp.iLow) / (bp.cHigh - bp.cLow)) * (concentration - bp.cLow) + bp.iLow
+      );
+      console.log(`ISPU for ${component}: ${ispu}`);
+      return ispu;
     }
   }
   
-  // Check for snow data
-  if (weatherData.snow) {
-    if (weatherData.snow['1h']) {
-      precipitation += weatherData.snow['1h'];
-    } else if (weatherData.snow['3h']) {
-      precipitation += weatherData.snow['3h'] / 3; // Convert 3h to 1h average
-    }
-  }
+  console.log(`Concentration ${concentration} for ${component} is outside all breakpoint ranges`);
+  return null;
+}
+
+export function processAndAggregate(processedData, meteoData, targetHour) {
+  console.log('processAndAggregate - Input processedData:', JSON.stringify(processedData, null, 2));
+  console.log('processAndAggregate - Input meteoData:', JSON.stringify(meteoData, null, 2));
   
-  // Log transform: log(precipitation + 1) to handle zero values
-  result.log_prcp = parseFloat(Math.log(precipitation + 1).toFixed(4));
+  const averages = calculateAverages(processedData);
+  console.log('processAndAggregate - Calculated averages:', JSON.stringify(averages, null, 2));
 
-  // Wind direction and speed
-  if (weatherData.wind) {
-    // Wind speed (m/s)
-    if (weatherData.wind.speed !== undefined) {
-      result.wspd = parseFloat(weatherData.wind.speed.toFixed(2));
-    }
-
-    // Wind direction (convert degrees to sin/cos components)
-    if (weatherData.wind.deg !== undefined) {
-      const windDegRadians = (weatherData.wind.deg * Math.PI) / 180;
-      result.wdir_sin = parseFloat(Math.sin(windDegRadians).toFixed(4));
-      result.wdir_cos = parseFloat(Math.cos(windDegRadians).toFixed(4));
+  const ispuComponents = {};
+  for (const [key, value] of Object.entries(averages)) {
+    if (['pm2_5', 'pm10', 'co', 'no2', 'o3'].includes(key)) {
+      ispuComponents[key] = calculateISPU(key, value);
     }
   }
+  console.log('processAndAggregate - ISPU components:', JSON.stringify(ispuComponents, null, 2));
 
+  let aqi = null;
+  let dominantPollutant = 'unknown';
+  const valid = Object.entries(ispuComponents).filter(([_, v]) => v !== null);
+  if (valid.length > 0) {
+    valid.sort((a, b) => b[1] - a[1]);
+    [dominantPollutant, aqi] = valid[0];
+  }
+  console.log(`processAndAggregate - AQI: ${aqi}, Dominant pollutant: ${dominantPollutant}`);
+
+  const locationData = processedData[0]?.location || {};
+  const sensorId = processedData[0]?.id || '';
+
+  const result = {
+    aqi,
+    components: {
+      co: averages.co,
+      nh3: averages.nh3,
+      no2: averages.no2,
+      o3: averages.o3,
+      pm10: averages.pm10,
+      pm2_5: averages.pm2_5
+    },
+    dominant_pollutant: dominantPollutant.toUpperCase(),
+    id: sensorId,
+    location: { name: locationData.name },
+    meteo: {
+      log_prcp: meteoData?.main?.log_prcp || 0,
+      rhum: meteoData?.main?.rhum || null,
+      temp: meteoData?.main?.temp || null,
+      wdir_cos: meteoData?.wind?.wdir_cos || null,
+      wdir_sin: meteoData?.wind?.wdir_sin || null,
+      wspd: meteoData?.wind?.wspd || null
+    },
+    timestamp: targetHour.toDate()
+  };
+
+  console.log('processAndAggregate - Final result:', JSON.stringify(result, null, 2));
   return result;
 }
 
-/**
- * Convert temperature from Kelvin to Celsius
- * @param {number} kelvin - Temperature in Kelvin
- * @returns {number} Temperature in Celsius
- */
-export function kelvinToCelsius(kelvin) {
-  return kelvin - 273.15;
-}
-
-/**
- * Convert wind speed from different units to m/s
- * @param {number} speed - Wind speed
- * @param {string} unit - Current unit ('ms', 'kmh', 'mph', 'kts')
- * @returns {number} Wind speed in m/s
- */
-export function convertWindSpeed(speed, unit = 'ms') {
-  switch (unit.toLowerCase()) {
-    case 'kmh':
-    case 'km/h':
-      return speed / 3.6;
-    case 'mph':
-      return speed * 0.44704;
-    case 'kts':
-    case 'knots':
-      return speed * 0.514444;
-    case 'ms':
-    case 'm/s':
-    default:
-      return speed;
-  }
-}
-
-/**
- * Validate weather data completeness
- * @param {Object} data - Processed weather data
- * @returns {Object} Validation result
- */
-export function validateWeatherData(data) {
-  const required = ['temp', 'rhum', 'log_prcp', 'wdir_sin', 'wdir_cos', 'wspd'];
-  const missing = required.filter(field => data[field] === undefined || data[field] === null);
-  
+export function createErrorResponse(statusCode, message, details = {}) {
   return {
-    isValid: missing.length === 0,
-    missingFields: missing,
-    data
+    statusCode,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ error: message, ...details })
   };
 }
 
-/**
- * Calculate dew point from temperature and humidity
- * @param {number} temp - Temperature in Celsius
- * @param {number} humidity - Relative humidity in percentage
- * @returns {number} Dew point in Celsius
- */
-export function calculateDewPoint(temp, humidity) {
-  const a = 17.27;
-  const b = 237.7;
-  const alpha = ((a * temp) / (b + temp)) + Math.log(humidity / 100);
-  return (b * alpha) / (a - alpha);
-}
-
-/**
- * Calculate heat index from temperature and humidity
- * @param {number} temp - Temperature in Celsius
- * @param {number} humidity - Relative humidity in percentage
- * @returns {number} Heat index in Celsius
- */
-export function calculateHeatIndex(temp, humidity) {
-  // Convert to Fahrenheit for calculation
-  const tempF = (temp * 9/5) + 32;
-  
-  if (tempF < 80) {
-    return temp; // No heat index calculation needed below 80°F
-  }
-  
-  const c1 = -42.379;
-  const c2 = 2.04901523;
-  const c3 = 10.14333127;
-  const c4 = -0.22475541;
-  const c5 = -0.00683783;
-  const c6 = -0.05481717;
-  const c7 = 0.00122874;
-  const c8 = 0.00085282;
-  const c9 = -0.00000199;
-  
-  const hiF = c1 + (c2 * tempF) + (c3 * humidity) + (c4 * tempF * humidity) +
-             (c5 * tempF * tempF) + (c6 * humidity * humidity) +
-             (c7 * tempF * tempF * humidity) + (c8 * tempF * humidity * humidity) +
-             (c9 * tempF * tempF * humidity * humidity);
-  
-  // Convert back to Celsius
-  return (hiF - 32) * 5/9;
+export function createSuccessResponse(data) {
+  return {
+    statusCode: 200,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  };
 }
