@@ -2,16 +2,15 @@
 import admin from 'firebase-admin';
 import moment from 'moment-timezone';
 import serviceAccount from './firebase-service-account.json' assert { type: 'json' };
-import { 
-  parseTimestamp, 
-  getHourRange, 
-  processAndAggregate, 
-  createErrorResponse, 
+import {
+  parseTimestamp,
+  getHourRange,
+  processAndAggregate,
+  createErrorResponse,
   createSuccessResponse,
-  generateCurrentHourTimestamp 
+  generateCurrentHourTimestamp
 } from './utils.mjs';
 
-// Initialize Firebase Admin
 if (!admin.apps.length) {
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -321,50 +320,35 @@ async function processMultipleSensors(sensorIds) {
 }
 
 /**
- * AWS Lambda handler function
- * @param {Object} event - Lambda event object
- * @param {Object} context - Lambda context object
- * @returns {Promise<Object>} Lambda response object
+ * Cloud Run Functions handler function.
+ * @param {express.Request} req - Express request object.
+ * @param {express.Response} res - Express response object.
  */
-export const handler = async (event, context) => {
-  console.log('Processing event:', JSON.stringify(event, null, 2));
+export const handler = async (req, res) => {
+  console.log('Processing request:', JSON.stringify(req.body, null, 2));
 
   try {
-    // Extract sensor IDs from event (support multiple formats)
     let sensorIds;
-    
-    // Check direct property
-    if (event.sensorIds) {
-      sensorIds = event.sensorIds;
-    }
-    // Check for single sensorId (convert to array)
-    else if (event.sensorId) {
-      sensorIds = [event.sensorId];
-    }
-    // Check in body (if event comes from API Gateway)
-    else if (event.body) {
-      const body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+    const { body } = req;
+
+    if (body) {
       sensorIds = body.sensorIds || (body.sensorId ? [body.sensorId] : null);
     }
 
-    // Validate sensor IDs
     if (!sensorIds || (Array.isArray(sensorIds) && sensorIds.length === 0)) {
       console.error('Missing or empty sensorIds parameter');
-      return createErrorResponse(400, 'Missing required parameter: sensorIds (array of sensor IDs)');
+      return res.status(400).json({ error: 'Missing required parameter: sensorIds (array of sensor IDs)' });
     }
 
-    // Process multiple sensors
     const { results, hourStart, hourEnd } = await processMultipleSensors(sensorIds);
 
-    // Analyze results
     const successful = results.filter(r => r.status === 'success');
     const skipped = results.filter(r => r.status === 'skipped');
     const failed = results.filter(r => r.status === 'error');
 
     console.log(`Processing complete: ${successful.length} successful, ${skipped.length} skipped, ${failed.length} failed`);
 
-    // Return comprehensive response
-    return createSuccessResponse({
+    const responseBody = {
       message: 'Processing completed',
       summary: {
         total: results.length,
@@ -376,26 +360,31 @@ export const handler = async (event, context) => {
       hourRange: hourStart && hourEnd ? `${hourStart.format()} - ${hourEnd.format()}` : 'N/A',
       generatedAt: new Date().toISOString(),
       results: results
-    });
+    };
+
+    return res.status(200).json(responseBody);
 
   } catch (error) {
     console.error('Error processing data:', error);
     
-    // Handle specific error types
+    // Kirim respons kesalahan yang sesuai
+    let statusCode = 500;
+    let errorMessage = 'Internal server error';
+
     if (error.code === 'PERMISSION_DENIED') {
-      return createErrorResponse(403, 'Permission denied accessing Firestore');
+      statusCode = 403;
+      errorMessage = 'Permission denied accessing Firestore';
     } else if (error.code === 'UNAVAILABLE') {
-      return createErrorResponse(503, 'Firestore service unavailable');
+      statusCode = 503;
+      errorMessage = 'Firestore service unavailable';
     } else if (error.code === 'DEADLINE_EXCEEDED') {
-      return createErrorResponse(504, 'Request timeout');
+      statusCode = 504;
+      errorMessage = 'Request timeout';
     }
 
-    return createErrorResponse(500, 'Internal server error', {
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    return res.status(statusCode).json({
+      error: errorMessage,
+      details: error.message
     });
   }
 };
-
-// Export for testing purposes
-export { fetchProcessedData, fetchMeteoData, storeAggregatedData };

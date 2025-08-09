@@ -1,28 +1,22 @@
 {
   "name": "firestore-data-aggregator",
   "version": "1.0.0",
-  "description": "Lambda function to aggregate sensor data from Firestore",
-  "main": "index.mjs",
   "type": "module",
+  "description": "Cloud Run Function to process and aggregate pollution data",
+  "main": "index.mjs",
   "scripts": {
+    "start": "functions-framework --target=handler --source=index.mjs",
     "test": "node test.mjs"
   },
   "dependencies": {
     "firebase-admin": "^12.0.0",
-    "moment-timezone": "^0.5.45"
+    "moment-timezone": "^0.5.45",
+    "@google-cloud/functions-framework": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0"
   },
   "engines": {
     "node": "18.x"
-  },
-  "keywords": [
-    "aws",
-    "lambda",
-    "firestore",
-    "air-quality",
-    "sensor-data",
-    "aggregation"
-  ]
+  }
 }
